@@ -36,6 +36,22 @@ export default function App() {
   const [showBadges, setShowBadges] = useState(false);
   const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
+  // Check URL parameters for direct teacher access (?mode=teacher or #teacher)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (
+        params.get('mode') === 'teacher' ||
+        params.get('teacher') === 'true' ||
+        window.location.hash === '#teacher'
+      ) {
+        setShowTeacherDashboard(true);
+      }
+    } catch (e) {
+      console.warn('URL param parse error', e);
+    }
+  }, []);
+
   // Save progress to LocalStorage
   useEffect(() => {
     try {
@@ -45,6 +61,7 @@ export default function App() {
       console.warn('LocalStorage save error', e);
     }
   }, [completedIds, userAnswers]);
+
 
   // Filter locations
   const filteredLocations = LOCATION_DATA.filter(loc => {
