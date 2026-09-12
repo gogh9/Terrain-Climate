@@ -1,13 +1,13 @@
 import React from 'react';
-import { X, LogIn, UserCheck, Shield, GraduationCap, LogOut } from 'lucide-react';
+import { X, LogOut } from 'lucide-react';
 import { signInWithGoogle, signOutUser } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 export default function LoginModal({ user, userRole, setUserRole, onClose }) {
-  const handleGoogleLogin = async (role) => {
+  const handleGoogleLogin = async () => {
     sound.playClick();
-    localStorage.setItem('geo_user_role', role);
-    setUserRole(role);
+    localStorage.setItem('geo_user_role', 'teacher');
+    setUserRole('teacher');
     await signInWithGoogle();
   };
 
@@ -16,51 +16,53 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
     await signOutUser();
     localStorage.removeItem('geo_user_role');
     setUserRole('student');
-    onClose();
+    if (onClose) onClose();
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 10000, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)' }}>
       <div
-        className="glass-panel modal-content"
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
         style={{
-          padding: '2rem',
-          maxWidth: '480px',
-          borderRadius: '24px',
-          textAlign: 'center'
+          padding: '2.5rem 2rem',
+          maxWidth: '520px',
+          width: '90%',
+          borderRadius: '16px',
+          background: '#181818',
+          border: '1px solid #282828',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)',
+          textAlign: 'center',
+          color: '#ffffff',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
         }}
       >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.6rem' }}>🔐</span>
-            <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: 'white' }}>
-              구글 계정 로그인
-            </h2>
-          </div>
+        {/* Close Button */}
+        {onClose && (
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(255, 255, 255, 0.1)',
+              position: 'absolute',
+              top: '1rem',
+              right: '1rem',
+              background: 'none',
               border: 'none',
-              color: '#94a3b8',
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
+              color: '#888888',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              fontSize: '1.2rem',
+              padding: '4px'
             }}
           >
-            <X size={18} />
+            <X size={20} />
           </button>
-        </div>
+        )}
 
         {user ? (
           /* User Logged In Status */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '1rem 0' }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <img
               src={user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user'}
               alt="프로필 이미지"
@@ -68,15 +70,15 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
                 width: '72px',
                 height: '72px',
                 borderRadius: '50%',
-                border: '3px solid #38bdf8',
-                boxShadow: '0 4px 16px rgba(56, 189, 248, 0.4)'
+                border: '3px solid #1db954',
+                boxShadow: '0 4px 16px rgba(29, 185, 84, 0.4)'
               }}
             />
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'white' }}>
-                {user.user_metadata?.full_name || '로그인된 사용자'}
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'white' }}>
+                {user.user_metadata?.full_name || '교사 사용자'}
               </h3>
-              <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '2px' }}>
+              <p style={{ fontSize: '0.88rem', color: '#a0a0a0', marginTop: '4px' }}>
                 {user.email}
               </p>
               <div
@@ -84,69 +86,146 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  marginTop: '8px',
-                  padding: '4px 12px',
-                  borderRadius: '12px',
-                  fontSize: '0.8rem',
+                  marginTop: '10px',
+                  padding: '4px 14px',
+                  borderRadius: '20px',
+                  fontSize: '0.82rem',
                   fontWeight: 800,
-                  background: userRole === 'teacher' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)',
-                  color: userRole === 'teacher' ? '#34d399' : '#38bdf8',
-                  border: `1px solid ${userRole === 'teacher' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(56, 189, 248, 0.4)'}`
+                  background: 'rgba(29, 185, 84, 0.2)',
+                  color: '#1db954',
+                  border: '1px solid rgba(29, 185, 84, 0.4)'
                 }}
               >
-                {userRole === 'teacher' ? '👨‍🏫 선생님 계정' : '🎓 학생 계정'}
+                👨‍🏫 교사 계정 로그인됨
               </div>
             </div>
 
             <button
-              className="btn btn-secondary"
               onClick={handleLogout}
-              style={{ width: '100%', marginTop: '1rem', justifyContent: 'center', color: '#ef4444' }}
+              style={{
+                width: '100%',
+                marginTop: '1.5rem',
+                padding: '0.85rem',
+                borderRadius: '9999px',
+                border: '1px solid #333',
+                background: '#242424',
+                color: '#ef4444',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
             >
-              <LogOut size={16} />
+              <LogOut size={18} />
               <span>로그아웃</span>
             </button>
           </div>
         ) : (
-          /* Login Selector Options */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem 0' }}>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
-              구글 계정으로 로그인하여 제출 기록을 안전하게 관리하고 선생님 대시보드에 연동하세요.
+          /* Exact Reference Screenshot Card UI */
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
+            {/* Title with Map Emoji */}
+            <h2
+              style={{
+                fontSize: '2rem',
+                fontWeight: 900,
+                color: '#ffffff',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                letterSpacing: '-0.02em'
+              }}
+            >
+              <span>🗺️</span> 우리 반 세계지도
+            </h2>
+
+            {/* Subtitle */}
+            <p
+              style={{
+                fontSize: '1rem',
+                color: '#cccccc',
+                margin: '0 0 2rem 0',
+                fontWeight: 500,
+                lineHeight: 1.4
+              }}
+            >
+              우리 반 친구들과 함께 세계 여러 나라를 조사해 보아요!
             </p>
 
-            {/* Student Google Login Button */}
+            {/* Green Google Login Button */}
             <button
-              className="btn btn-primary"
-              onClick={() => handleGoogleLogin('student')}
+              onClick={handleGoogleLogin}
               style={{
                 width: '100%',
-                padding: '0.85rem 1.2rem',
-                fontSize: '0.95rem',
+                padding: '1rem',
+                borderRadius: '9999px',
+                background: '#1db954',
+                border: 'none',
+                color: '#000000',
+                fontSize: '1.05rem',
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(29, 185, 84, 0.4)',
+                transition: 'transform 0.15s ease, background 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#1ed760';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#1db954';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              <GraduationCap size={20} />
-              <span>🎓 학생용 구글 로그인</span>
+              GOOGLE 로그인
             </button>
 
-            {/* Teacher Google Login Button */}
-            <button
-              className="btn btn-primary"
-              onClick={() => handleGoogleLogin('teacher')}
+            {/* Footer Powered By Credit */}
+            <div
               style={{
-                width: '100%',
-                padding: '0.85rem 1.2rem',
-                fontSize: '0.95rem',
-                justifyContent: 'center',
-                background: 'linear-gradient(135deg, #059669, #10b981)',
-                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)'
+                marginTop: '2.5rem',
+                fontSize: '0.85rem',
+                color: '#71717a',
+                letterSpacing: '-0.01em'
               }}
             >
-              <Shield size={20} />
-              <span>👨‍🏫 교사용 구글 로그인</span>
-            </button>
+              powerd by sota / gogh999@gmail.com
+            </div>
+
+            {/* Footer Navigation Links */}
+            <div
+              style={{
+                marginTop: '1.25rem',
+                fontSize: '0.85rem',
+                color: '#a1a1aa',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.2rem'
+              }}
+            >
+              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+                개인정보처리방침
+              </a>
+              <span>·</span>
+              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+                사용약관
+              </a>
+              <span>·</span>
+              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+                도움말
+              </a>
+            </div>
+
           </div>
         )}
       </div>
