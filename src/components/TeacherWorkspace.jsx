@@ -90,19 +90,6 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, categoryFilter: category } : s));
   };
 
-  // Toggle Continent Filter
-  const handleContinentToggle = (sessionId, continent) => {
-    sound.playClick();
-    setSessions(prev => prev.map(s => {
-      if (s.id !== sessionId) return s;
-      const exists = s.continents.includes(continent);
-      const nextContinents = exists
-        ? s.continents.filter(c => c !== continent)
-        : [...s.continents, continent];
-      return { ...s, continents: nextContinents };
-    }));
-  };
-
   // Copy Student Distribution Link
   const handleCopyLink = (session) => {
     sound.playClick();
@@ -194,7 +181,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
         minHeight: '100vh',
         background: '#121212',
         color: '#ffffff',
-        fontFamily: "'Noto Sans KR', sans-serif",
+        fontFamily: "'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif",
         padding: '1.5rem 2rem'
       }}
     >
@@ -206,7 +193,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
           alignItems: 'center',
           marginBottom: '2rem',
           paddingBottom: '1rem',
-          borderBottom: '1px solid #262626'
+          borderBottom: '1px solid #282828'
         }}
       >
         <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
@@ -214,42 +201,53 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
         </h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '0.9rem', color: '#a1a1aa' }}>
+          <span style={{ fontSize: '0.88rem', color: '#b3b3b3' }}>
             {user?.email || 'gogh999@gmail.com'}
           </span>
 
           <button
             onClick={onLogout}
             style={{
-              background: 'none',
-              border: 'none',
-              color: '#a1a1aa',
+              background: '#1f1f1f',
+              border: '1px solid #7c7c7c',
+              borderRadius: '9999px',
+              color: '#b3b3b3',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              padding: '4px'
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              transition: 'all 0.15s ease'
             }}
             title="로그아웃"
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.borderColor = '#ffffff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#b3b3b3'; e.currentTarget.style.borderColor = '#7c7c7c'; }}
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
           </button>
 
           <button
             onClick={handleCreateNewMap}
             style={{
-              background: '#10b981',
+              background: '#1ed760',
               color: '#000000',
               border: 'none',
-              padding: '0.65rem 1.2rem',
-              borderRadius: '8px',
-              fontWeight: 900,
-              fontSize: '0.9rem',
+              padding: '0.65rem 1.4rem',
+              borderRadius: '9999px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              textTransform: 'uppercase',
+              letterSpacing: '1.4px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 4px 16px rgba(29, 215, 96, 0.35)',
+              transition: 'transform 0.15s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <Plus size={18} /> 새 지도 만들기
           </button>
@@ -273,16 +271,16 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               key={session.id}
               onClick={() => setActiveSessionId(session.id)}
               style={{
-                background: '#1a1a1a',
+                background: '#181818',
                 borderRadius: '12px',
-                border: `2px solid ${isSelected ? '#10b981' : '#282828'}`,
-                padding: '1.4rem',
+                border: `2px solid ${isSelected ? '#1ed760' : '#282828'}`,
+                padding: '1.5rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1rem',
+                gap: '1.1rem',
                 position: 'relative',
-                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                boxShadow: isSelected ? '0 0 20px rgba(16, 185, 129, 0.2)' : 'none'
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                boxShadow: isSelected ? '0 0 20px rgba(29, 215, 96, 0.25)' : 'rgba(0, 0, 0, 0.3) 0px 8px 8px'
               }}
             >
               {/* Card Header */}
@@ -291,8 +289,8 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                     {session.title}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '4px', fontWeight: 700 }}>
-                    접속 횟수 (학생): <strong style={{ color: '#10b981' }}>{session.accessCount}회</strong>
+                  <div style={{ fontSize: '0.85rem', color: '#1ed760', marginTop: '4px', fontWeight: 700 }}>
+                    접속 횟수 (학생): <strong style={{ color: '#1ed760' }}>{session.accessCount}회</strong>
                   </div>
                 </div>
 
@@ -300,13 +298,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <button
                     onClick={(e) => { e.stopPropagation(); handleExportCSV(session); }}
                     style={{
-                      background: '#10b981',
+                      background: '#1ed760',
                       color: '#000000',
                       border: 'none',
-                      padding: '5px 10px',
-                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
                       fontSize: '0.78rem',
-                      fontWeight: 800,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -319,13 +319,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <button
                     onClick={(e) => { e.stopPropagation(); handleToggleOpen(session.id); }}
                     style={{
-                      background: session.isOpen ? '#10b981' : '#333333',
-                      color: session.isOpen ? '#000000' : '#888888',
+                      background: session.isOpen ? '#1ed760' : '#282828',
+                      color: session.isOpen ? '#000000' : '#b3b3b3',
                       border: 'none',
-                      padding: '5px 10px',
-                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
                       fontSize: '0.78rem',
-                      fontWeight: 800,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -338,17 +340,17 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               </div>
 
               {/* Category Filter Selection */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#a1a1aa' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#b3b3b3' }}>
                 <span>학습 주제:</span>
                 <select
                   value={session.categoryFilter}
                   onChange={(e) => handleCategoryChange(session.id, e.target.value)}
                   style={{
-                    background: '#242424',
+                    background: '#1f1f1f',
                     color: '#ffffff',
-                    border: '1px solid #333333',
-                    borderRadius: '6px',
-                    padding: '4px 8px',
+                    border: '1px solid #7c7c7c',
+                    borderRadius: '9999px',
+                    padding: '4px 12px',
                     fontSize: '0.82rem',
                     outline: 'none',
                     fontWeight: 700
@@ -360,28 +362,28 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 </select>
               </div>
 
-
-
-              {/* Big Green Copy Button */}
+              {/* Spotify Green Copy Link Button */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleCopyLink(session); }}
                 style={{
-                  background: '#10b981',
+                  background: '#1ed760',
                   color: '#000000',
                   border: 'none',
-                  padding: '0.85rem',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  fontWeight: 900,
+                  padding: '0.9rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1.4px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+                  boxShadow: '0 4px 16px rgba(29, 215, 96, 0.35)',
                   transition: 'transform 0.15s ease'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 {copiedId === session.id ? <Check size={20} /> : <Copy size={20} />}
@@ -393,13 +395,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 <button
                   onClick={(e) => { e.stopPropagation(); onEnterMap(session); }}
                   style={{
-                    background: '#242424',
+                    background: '#1f1f1f',
                     color: '#ffffff',
-                    border: '1px solid #333333',
+                    border: '1px solid #7c7c7c',
                     padding: '8px',
-                    borderRadius: '6px',
-                    fontSize: '0.82rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -413,13 +417,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 <button
                   onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
                   style={{
-                    background: '#242424',
-                    color: '#eab308',
-                    border: '1px solid #333333',
+                    background: '#1f1f1f',
+                    color: '#ffa42b',
+                    border: '1px solid #7c7c7c',
                     padding: '8px',
-                    borderRadius: '6px',
-                    fontSize: '0.82rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -433,13 +439,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
                   style={{
-                    background: '#242424',
-                    color: '#ef4444',
-                    border: '1px solid #333333',
+                    background: '#1f1f1f',
+                    color: '#f3727f',
+                    border: '1px solid #7c7c7c',
                     padding: '8px',
-                    borderRadius: '6px',
-                    fontSize: '0.82rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -459,7 +467,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       {/* Accordion: Unsubmitted Locations Tracker */}
       <div
         style={{
-          background: '#1a1a1a',
+          background: '#181818',
           borderRadius: '12px',
           border: '1px solid #282828',
           marginBottom: '2rem',
@@ -477,23 +485,23 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
             background: '#1f1f1f'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.05rem', fontWeight: 800 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.05rem', fontWeight: 700 }}>
             <span>🧙‍♂️</span>
             <span>아직 입력되지 않은 지역</span>
-            <span style={{ background: '#10b981', color: '#000', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 900 }}>
+            <span style={{ background: '#1ed760', color: '#000', padding: '2px 10px', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: 900 }}>
               {unsubmittedLocations.length}개
             </span>
           </div>
-          <div style={{ color: '#888888', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
+          <div style={{ color: '#b3b3b3', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
             <span>{showUnsubmittedAccordion ? '접기' : '펼치기'}</span>
             {showUnsubmittedAccordion ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         </div>
 
         {showUnsubmittedAccordion && (
-          <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #282828', background: '#141414' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #282828', background: '#121212' }}>
             {unsubmittedLocations.length === 0 ? (
-              <div style={{ color: '#10b981', fontWeight: 700, fontSize: '0.9rem' }}>
+              <div style={{ color: '#1ed760', fontWeight: 700, fontSize: '0.9rem' }}>
                 🎉 모든 지형과 기후 지점이 성공적으로 탐험 및 제출되었습니다!
               </div>
             ) : (
@@ -502,11 +510,11 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <span
                     key={loc.id}
                     style={{
-                      background: '#242424',
+                      background: '#1f1f1f',
                       border: '1px solid #333333',
-                      color: '#cbd5e1',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
+                      color: '#cbcbcb',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
                       fontSize: '0.83rem',
                       fontWeight: 600
                     }}
@@ -522,16 +530,16 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
 
       {/* Student Submissions Section Filter */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-        <span style={{ fontSize: '0.85rem', color: '#a1a1aa' }}>작성자 필터:</span>
+        <span style={{ fontSize: '0.85rem', color: '#b3b3b3' }}>작성자 필터:</span>
         <select
           value={studentFilter}
           onChange={(e) => setStudentFilter(e.target.value)}
           style={{
-            background: '#242424',
+            background: '#1f1f1f',
             color: '#ffffff',
-            border: '1px solid #333333',
-            borderRadius: '6px',
-            padding: '6px 12px',
+            border: '1px solid #7c7c7c',
+            borderRadius: '9999px',
+            padding: '6px 14px',
             fontSize: '0.85rem',
             outline: 'none',
             fontWeight: 700
@@ -555,20 +563,21 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               <div
                 key={studentName}
                 style={{
-                  background: '#1a1a1a',
+                  background: '#181818',
                   borderRadius: '12px',
                   border: '1px solid #282828',
                   padding: '1.25rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.85rem'
+                  gap: '0.85rem',
+                  boxShadow: 'rgba(0, 0, 0, 0.3) 0px 8px 8px'
                 }}
               >
                 <h4 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                   {studentName}의 기록
                 </h4>
 
-                <div style={{ fontSize: '0.82rem', color: '#ec4899', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ fontSize: '0.82rem', color: '#1ed760', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   🎯 등록한 나라/지점 ({list.length}개)
                 </div>
 
@@ -577,7 +586,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                     <div
                       key={sub.id}
                       style={{
-                        background: '#242424',
+                        background: '#1f1f1f',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         display: 'flex',
@@ -586,11 +595,11 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                         fontSize: '0.82rem'
                       }}
                     >
-                      <span style={{ color: '#10b981', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#1ed760', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {sub.answer_name || sub.location_title}
                       </span>
 
-                      <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
+                      <div style={{ display: 'flex', gap: '4px', opacity: 0.8 }}>
                         <button
                           onClick={async () => {
                             if (!window.confirm(`'${sub.answer_name || sub.location_title}' 기록을 삭제하시겠습니까?`)) return;
@@ -598,7 +607,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                             await deleteSubmission(sub.id);
                             loadSubmissions();
                           }}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: 0 }}
                           title="삭제"
                         >
                           <Trash2 size={13} />

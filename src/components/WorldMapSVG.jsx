@@ -244,7 +244,7 @@ export default function WorldMapSVG({
         position: 'relative',
         width: '100%',
         height: '100%',
-        background: '#0a192f',
+        background: '#121212',
         overflow: 'hidden',
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none'
@@ -262,10 +262,10 @@ export default function WorldMapSVG({
         }}
       >
         <defs>
-          {/* Radial Ocean Gradient */}
+          {/* Radial Ocean Gradient (Spotify Near Black Theme) */}
           <radialGradient id="ocean-gradient" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#9de4f8" />
-            <stop offset="100%" stopColor="#7acbe4" />
+            <stop offset="0%" stopColor="#1a1a1a" />
+            <stop offset="100%" stopColor="#121212" />
           </radialGradient>
 
           {/* Glow Filter for Pins */}
@@ -274,14 +274,14 @@ export default function WorldMapSVG({
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
 
-          {/* Pretty Flag Gradients */}
+          {/* Spotify Green Flag Gradients */}
           <linearGradient id="red-flag-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff4d4d" />
+            <stop offset="0%" stopColor="#f3727f" />
             <stop offset="100%" stopColor="#dc2626" />
           </linearGradient>
           <linearGradient id="green-flag-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#34d399" />
-            <stop offset="100%" stopColor="#059669" />
+            <stop offset="0%" stopColor="#1ed760" />
+            <stop offset="100%" stopColor="#1db954" />
           </linearGradient>
         </defs>
 
@@ -294,8 +294,8 @@ export default function WorldMapSVG({
           rx="40"
           ry="40"
           fill="url(#ocean-gradient)"
-          stroke="#5bb3d1"
-          strokeWidth="3"
+          stroke="#282828"
+          strokeWidth="2"
         />
 
         {/* Latitude & Longitude Graticule Lines */}
@@ -303,7 +303,7 @@ export default function WorldMapSVG({
           <path
             d={graticules}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.45)"
+            stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth="0.8"
             strokeDasharray="3,3"
           />
@@ -319,17 +319,17 @@ export default function WorldMapSVG({
             const isHovered = hoveredFeature?.id === feature.id || (hoveredFeature && hoveredFeature.properties?.name === feature.properties?.name);
             const isSelected = selectedCountry && countryData && (selectedCountry.code === countryData.code || selectedCountry.id === countryData.id);
 
-            let fillColor = landFill;
-            if (isSelected) fillColor = landSelect;
-            else if (isHovered) fillColor = landHover;
+            let fillColor = '#242424';
+            if (isSelected) fillColor = '#1ed760';
+            else if (isHovered) fillColor = '#333333';
 
             return (
               <path
                 key={feature.id || i}
                 d={countryPath}
                 fill={fillColor}
-                stroke={isHovered ? '#0284c7' : landStroke}
-                strokeWidth={isHovered ? "1.6" : (isWhite ? "0.8" : "0.6")}
+                stroke={isHovered ? '#1ed760' : '#181818'}
+                strokeWidth={isHovered ? "1.6" : "0.7"}
                 style={{
                   transition: 'fill 0.15s ease, stroke 0.15s ease',
                   cursor: 'pointer'
@@ -386,14 +386,14 @@ export default function WorldMapSVG({
               {/* Outer Pulse Glow at Flag Base */}
               <circle
                 r={isHovered ? 14 : 9}
-                fill={isCompleted ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.35)'}
+                fill={isCompleted ? 'rgba(30, 215, 96, 0.4)' : 'rgba(239, 68, 68, 0.35)'}
                 style={{ transition: 'all 0.2s ease' }}
               />
 
               {/* Base Pin Circle */}
               <circle
                 r="4.5"
-                fill={isCompleted ? '#10b981' : '#dc2626'}
+                fill={isCompleted ? '#1ed760' : '#dc2626'}
                 stroke="#ffffff"
                 strokeWidth="1.5"
                 filter="url(#pin-glow)"
@@ -405,7 +405,7 @@ export default function WorldMapSVG({
                 y1="0"
                 x2="0"
                 y2="-22"
-                stroke={isCompleted ? '#065f46' : '#1e293b'}
+                stroke={isCompleted ? '#14833b' : '#1e293b'}
                 strokeWidth="2"
                 strokeLinecap="round"
               />
@@ -424,7 +424,7 @@ export default function WorldMapSVG({
               <path
                 d="M 0 -22 Q 9 -26 18 -22 Q 9 -17 0 -13 Z"
                 fill={isCompleted ? 'url(#green-flag-grad)' : 'url(#red-flag-grad)'}
-                stroke={isCompleted ? '#047857' : '#991b1b'}
+                stroke={isCompleted ? '#14833b' : '#991b1b'}
                 strokeWidth="1"
                 filter="url(#pin-glow)"
               />
@@ -449,24 +449,24 @@ export default function WorldMapSVG({
             position: 'absolute',
             left: `${tooltipPos.x + 15}px`,
             top: `${tooltipPos.y - 15}px`,
-            background: 'rgba(15, 23, 42, 0.95)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
+            background: '#181818',
+            border: '1px solid #1ed760',
             color: 'white',
             padding: '8px 14px',
             borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.8)',
             pointerEvents: 'none',
             zIndex: 1200,
             fontFamily: 'Noto Sans KR, sans-serif'
           }}
         >
-          <div style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 700 }}>
+          <div style={{ fontSize: '0.72rem', color: '#1ed760', fontWeight: 700 }}>
             [{hoveredLocation.categoryName}] {hoveredLocation.pageRef}
           </div>
           <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'white', marginTop: '2px' }}>
             {hoveredLocation.name}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#b3b3b3', marginTop: '3px' }}>
             클릭하여 지형/기후 확인 📝
           </div>
         </div>
@@ -476,17 +476,17 @@ export default function WorldMapSVG({
             position: 'absolute',
             left: `${tooltipPos.x + 15}px`,
             top: `${tooltipPos.y - 15}px`,
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: '1px solid rgba(56, 189, 248, 0.5)',
+            background: '#181818',
+            border: '1px solid #1ed760',
             color: '#ffffff',
             padding: '6px 14px',
-            borderRadius: '8px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            borderRadius: '9999px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
             pointerEvents: 'none',
             zIndex: 1200,
             fontFamily: 'Noto Sans KR, sans-serif',
-            fontSize: '0.95rem',
-            fontWeight: 800,
+            fontSize: '0.9rem',
+            fontWeight: 700,
             whiteSpace: 'nowrap'
           }}
         >
@@ -496,16 +496,18 @@ export default function WorldMapSVG({
 
       {/* Map Control Floating Toolbar (Theme Switch & Zoom & Reset) */}
       <div
-        className="glass-panel"
         style={{
           position: 'absolute',
           top: '20px',
           right: '20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px',
+          gap: '8px',
           padding: '6px',
-          borderRadius: '12px',
+          background: '#181818',
+          border: '1px solid #282828',
+          borderRadius: '9999px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
           zIndex: 1000
         }}
       >
@@ -513,7 +515,7 @@ export default function WorldMapSVG({
           className="btn btn-secondary"
           onClick={() => handleZoom(1.25)}
           title="확대"
-          style={{ width: '36px', height: '36px', padding: 0 }}
+          style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
           <ZoomIn size={18} />
         </button>
@@ -521,7 +523,7 @@ export default function WorldMapSVG({
           className="btn btn-secondary"
           onClick={() => handleZoom(0.8)}
           title="축소"
-          style={{ width: '36px', height: '36px', padding: 0 }}
+          style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
           <ZoomOut size={18} />
         </button>
@@ -529,7 +531,7 @@ export default function WorldMapSVG({
           className="btn btn-secondary"
           onClick={handleResetView}
           title="초기화"
-          style={{ width: '36px', height: '36px', padding: 0 }}
+          style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
           <RotateCcw size={18} />
         </button>

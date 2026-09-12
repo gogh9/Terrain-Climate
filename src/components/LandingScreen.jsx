@@ -15,20 +15,20 @@ export default function LandingScreen({ setUserRole }) {
       style={{
         width: '100vw',
         height: '100vh',
-        background: '#0d0d0d',
+        background: '#121212',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1.5rem',
-        fontFamily: "'Noto Sans KR', sans-serif"
+        fontFamily: "'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif"
       }}
     >
       <div
         style={{
-          padding: '3rem 2.5rem',
-          maxWidth: '560px',
+          padding: '3.5rem 2.5rem',
+          maxWidth: '540px',
           width: '100%',
-          borderRadius: '20px',
+          borderRadius: '16px',
           background: '#181818',
           border: '1px solid #282828',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9)',
@@ -60,33 +60,34 @@ export default function LandingScreen({ setUserRole }) {
         {/* Subtitle */}
         <p
           style={{
-            fontSize: '1.05rem',
-            color: '#cccccc',
+            fontSize: '1rem',
+            color: '#b3b3b3',
             margin: '0 0 2.5rem 0',
-            fontWeight: 500,
-            lineHeight: 1.55,
+            fontWeight: 400,
+            lineHeight: 1.6,
             wordBreak: 'keep-all'
           }}
         >
           우리 반 친구들과 함께 세계 여러 나라의 지형과 기후를 조사해 보아요!
         </p>
 
-        {/* Green Google Login Button */}
+        {/* Spotify Green Google Login Button */}
         <button
           onClick={handleGoogleLogin}
           style={{
             width: '100%',
             padding: '1.1rem',
             borderRadius: '9999px',
-            background: '#1db954',
+            background: '#1ed760',
             border: 'none',
             color: '#000000',
-            fontSize: '1.1rem',
-            fontWeight: 900,
-            letterSpacing: '0.08em',
+            fontSize: '1rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '1.6px',
             cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(29, 185, 84, 0.45)',
-            transition: 'transform 0.15s ease, background 0.15s ease',
+            boxShadow: '0 8px 24px rgba(29, 215, 96, 0.4)',
+            transition: 'transform 0.15s ease, background-color 0.15s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -97,7 +98,7 @@ export default function LandingScreen({ setUserRole }) {
             e.currentTarget.style.transform = 'scale(1.02)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#1db954';
+            e.currentTarget.style.background = '#1ed760';
             e.currentTarget.style.transform = 'scale(1)';
           }}
         >
@@ -108,7 +109,7 @@ export default function LandingScreen({ setUserRole }) {
         <div
           style={{
             marginTop: '3rem',
-            fontSize: '0.88rem',
+            fontSize: '0.85rem',
             color: '#71717a',
             letterSpacing: '-0.01em'
           }}
@@ -116,14 +117,12 @@ export default function LandingScreen({ setUserRole }) {
           powerd by sota / gogh999@gmail.com
         </div>
 
-
-
         {/* Footer Links */}
         <div
           style={{
             marginTop: '1.25rem',
-            fontSize: '0.88rem',
-            color: '#a1a1aa',
+            fontSize: '0.85rem',
+            color: '#b3b3b3',
             display: 'flex',
             alignItems: 'center',
             gap: '1.2rem'

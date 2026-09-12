@@ -211,19 +211,22 @@ export default function QuizModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             
             {/* Mode Switch Tabs */}
-            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.6)', padding: '6px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', background: '#1f1f1f', padding: '5px', borderRadius: '9999px', border: '1px solid #282828' }}>
               <button
                 onClick={() => { sound.playClick(); setActiveTab('quiz'); }}
                 style={{
                   flex: 1,
-                  padding: '0.75rem',
-                  fontSize: '1.05rem',
-                  fontWeight: 800,
+                  padding: '0.7rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
                   border: 'none',
-                  borderRadius: '10px',
-                  background: activeTab === 'quiz' ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'transparent',
-                  color: activeTab === 'quiz' ? 'white' : '#94a3b8',
-                  cursor: 'pointer'
+                  borderRadius: '9999px',
+                  background: activeTab === 'quiz' ? '#1ed760' : 'transparent',
+                  color: activeTab === 'quiz' ? '#000000' : '#b3b3b3',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 📝 학습 확인 입력
@@ -232,14 +235,17 @@ export default function QuizModal({
                 onClick={() => { sound.playClick(); setActiveTab('explore'); }}
                 style={{
                   flex: 1,
-                  padding: '0.75rem',
-                  fontSize: '1.05rem',
-                  fontWeight: 800,
+                  padding: '0.7rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
                   border: 'none',
-                  borderRadius: '10px',
-                  background: activeTab === 'explore' ? 'linear-gradient(135deg, #059669, #10b981)' : 'transparent',
-                  color: activeTab === 'explore' ? 'white' : '#94a3b8',
-                  cursor: 'pointer'
+                  borderRadius: '9999px',
+                  background: activeTab === 'explore' ? '#1ed760' : 'transparent',
+                  color: activeTab === 'explore' ? '#000000' : '#b3b3b3',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 📖 교과서 핵심 탐색
@@ -252,7 +258,7 @@ export default function QuizModal({
                 
                 {/* Student Name Input */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '1.05rem', fontWeight: 900, color: '#38bdf8', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#1ed760', marginBottom: '6px' }}>
                     👤 학생 이름 (작성자):
                   </label>
                   <input
@@ -260,23 +266,18 @@ export default function QuizModal({
                     placeholder="이름을 입력하세요 (예: 홍길동)"
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
+                    className="spotify-input"
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1.1rem',
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      border: '1.5px solid rgba(56, 189, 248, 0.4)',
-                      borderRadius: '12px',
-                      color: '#34d399',
-                      fontSize: '1.05rem',
-                      fontWeight: 800,
-                      outline: 'none'
+                      fontWeight: 700,
+                      color: '#1ed760'
                     }}
                   />
                 </div>
 
                 {/* Input 1: Name */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '1.1rem', fontWeight: 900, color: '#f8fafc', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
                     1. {location.categoryName} 명칭을 입력하세요:
                   </label>
 
@@ -287,16 +288,11 @@ export default function QuizModal({
                     onPaste={handleBlockPaste}
                     onDrop={handleBlockDrop}
                     onContextMenu={handleBlockContextMenu}
+                    className="spotify-input"
                     style={{
                       width: '100%',
-                      padding: '0.9rem 1.2rem',
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      border: '1.5px solid rgba(56, 189, 248, 0.4)',
-                      borderRadius: '12px',
-                      color: 'white',
-                      fontSize: '1.15rem',
-                      fontWeight: 700,
-                      outline: 'none'
+                      fontSize: '1.05rem',
+                      fontWeight: 700
                     }}
                   />
                 </div>
@@ -304,20 +300,20 @@ export default function QuizModal({
                 {/* Input 2: Characteristic Description */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f8fafc' }}>
+                    <label style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
                       2. 이 지역의 환경이나 생활 모습 특징을 입력하세요:
                     </label>
                     <button
                       type="button"
                       onClick={() => setShowHint(!showHint)}
-                      style={{ background: 'none', border: 'none', color: '#f59e0b', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      style={{ background: 'none', border: 'none', color: '#ffa42b', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       <HelpCircle size={16} /> {showHint ? '힌트 닫기' : '힌트 보기'}
                     </button>
                   </div>
                   
                   {showHint && (
-                    <div style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.4)', padding: '10px 14px', borderRadius: '10px', fontSize: '0.95rem', color: '#fbbf24', marginBottom: '10px', lineHeight: '1.5' }}>
+                    <div style={{ background: 'rgba(255, 164, 43, 0.12)', border: '1px solid rgba(255, 164, 43, 0.3)', padding: '10px 14px', borderRadius: '8px', fontSize: '0.9rem', color: '#ffa42b', marginBottom: '10px', lineHeight: '1.5' }}>
                       💡 <strong>힌트:</strong> {location.hint}
                     </div>
                   )}
@@ -332,48 +328,50 @@ export default function QuizModal({
                     style={{
                       width: '100%',
                       padding: '0.9rem 1.2rem',
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                      background: '#1f1f1f',
+                      color: '#ffffff',
                       borderRadius: '12px',
-                      color: 'white',
-                      fontSize: '1.1rem',
+                      boxShadow: 'rgb(18, 18, 18) 0px 1px 0px, rgb(124, 124, 124) 0px 0px 0px 1px inset',
+                      border: 'none',
+                      fontSize: '1rem',
                       lineHeight: '1.6',
                       resize: 'none',
-                      outline: 'none'
+                      outline: 'none',
+                      fontFamily: 'inherit'
                     }}
                   />
-                  <span style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '6px', display: 'block', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.82rem', color: '#b3b3b3', marginTop: '6px', display: 'block', fontWeight: 500 }}>
                     🔒 직접 키보드로 작성해 주세요. (붙여넣기 사용 불가)
                   </span>
                 </div>
 
                 {/* Submit Button */}
-                <button type="submit" className="btn btn-primary" style={{ padding: '1rem', fontSize: '1.15rem', fontWeight: 800 }}>
-                  <Sparkles size={20} /> 정답 제출 & 학습 확인
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.9rem', fontSize: '1rem', fontWeight: 700 }}>
+                  <Sparkles size={18} /> 정답 제출 & 학습 확인
                 </button>
 
                 {/* Feedback Box */}
                 {feedback && (
                   <div
                     style={{
-                      background: feedback.isSuccess ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)',
-                      border: `1.5px solid ${feedback.isSuccess ? '#10b981' : '#ef4444'}`,
-                      borderRadius: '14px',
+                      background: feedback.isSuccess ? 'rgba(30, 215, 96, 0.12)' : 'rgba(243, 114, 127, 0.12)',
+                      border: `1px solid ${feedback.isSuccess ? '#1ed760' : '#f3727f'}`,
+                      borderRadius: '12px',
                       padding: '1.2rem',
                       marginTop: '0.5rem'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 900, fontSize: '1.1rem', color: feedback.isSuccess ? '#34d399' : '#f87171', marginBottom: '8px' }}>
-                      {feedback.isSuccess ? <CheckCircle size={22} /> : <HelpCircle size={22} />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 700, fontSize: '1rem', color: feedback.isSuccess ? '#1ed760' : '#f3727f', marginBottom: '8px' }}>
+                      {feedback.isSuccess ? <CheckCircle size={20} /> : <HelpCircle size={20} />}
                       <span>{feedback.message}</span>
                     </div>
 
                     {/* Model Answer Comparison */}
-                    <div style={{ marginTop: '12px', background: 'rgba(15, 23, 42, 0.75)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <div style={{ fontSize: '0.9rem', color: '#38bdf8', fontWeight: 800, marginBottom: '6px' }}>
+                    <div style={{ marginTop: '12px', background: '#121212', padding: '12px 16px', borderRadius: '8px', border: '1px solid #282828' }}>
+                      <div style={{ fontSize: '0.85rem', color: '#1ed760', fontWeight: 700, marginBottom: '6px' }}>
                         📖 교과서 모범 답안 비교:
                       </div>
-                      <div style={{ fontSize: '1.05rem', color: '#f8fafc', lineHeight: 1.6 }}>
+                      <div style={{ fontSize: '0.95rem', color: '#ffffff', lineHeight: 1.6 }}>
                         {location.modelAnswer}
                       </div>
                     </div>
@@ -384,24 +382,24 @@ export default function QuizModal({
 
             {/* TAB 2: Exploration & Textbook Model Answer */}
             {activeTab === 'explore' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'rgba(15, 23, 42, 0.55)', padding: '1.25rem', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#121212', padding: '1.25rem', borderRadius: '12px', border: '1px solid #282828' }}>
                 <div>
-                  <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 700 }}>위치 및 대륙</span>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#38bdf8', marginTop: '2px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>위치 및 대륙</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1ed760', marginTop: '2px' }}>
                     {location.continent} ({location.lat.toFixed(2)}°, {location.lng.toFixed(2)}°)
                   </div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 700 }}>주요 지형/기후 명칭</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#f59e0b', marginTop: '2px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>주요 지형/기후 명칭</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffa42b', marginTop: '2px' }}>
                     {location.name}
                   </div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 700 }}>교과서 핵심 요약 정리</span>
-                  <div style={{ fontSize: '1.1rem', color: '#f8fafc', lineHeight: 1.7, marginTop: '6px', background: 'rgba(15,23,42,0.85)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>교과서 핵심 요약 정리</span>
+                  <div style={{ fontSize: '1rem', color: '#ffffff', lineHeight: 1.7, marginTop: '6px', background: '#181818', padding: '16px', borderRadius: '8px', border: '1px solid #282828' }}>
                     {location.modelAnswer}
                   </div>
                 </div>
@@ -410,7 +408,7 @@ export default function QuizModal({
                   <button
                     className="btn btn-success"
                     onClick={() => { sound.playClick(); setActiveTab('quiz'); }}
-                    style={{ fontSize: '1.05rem', padding: '0.85rem 1.25rem' }}
+                    style={{ fontSize: '0.9rem', padding: '0.75rem 1.4rem' }}
                   >
                     퀴즈 풀러 가기 <ArrowRight size={18} />
                   </button>

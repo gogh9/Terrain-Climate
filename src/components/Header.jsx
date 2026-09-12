@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, FileText, CheckCircle2, Users, LogIn, User } from 'lucide-react';
+import { Globe, FileText, CheckCircle2, Users } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 export default function Header({
@@ -15,45 +15,76 @@ export default function Header({
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
   return (
-    <header className="glass-panel" style={{ borderRadius: 0, borderTop: 0, borderLeft: 0, borderRight: 0, padding: '0.75rem 1.5rem', zIndex: 1000 }}>
+    <header
+      style={{
+        background: '#121212',
+        borderBottom: '1px solid #282828',
+        padding: '0.75rem 1.5rem',
+        zIndex: 1000,
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         
-        {/* Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: 'linear-gradient(135deg, #0284c7, #2563eb)', padding: '0.5rem', borderRadius: '12px', display: 'flex', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)' }}>
-            <Globe size={24} color="white" />
+        {/* Title & Brand Icon */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div
+            style={{
+              background: '#181818',
+              border: '1px solid #282828',
+              padding: '0.5rem',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
+            }}
+          >
+            <Globe size={24} color="#1ed760" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h1 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
                 6학년 사회 세계 지형·기후 백지도 탐험
               </h1>
-              <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  background: 'rgba(30, 215, 96, 0.15)',
+                  color: '#1ed760',
+                  border: '1px solid rgba(30, 215, 96, 0.3)',
+                  padding: '2px 10px',
+                  borderRadius: '9999px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px'
+                }}
+              >
                 교과서 백지도
               </span>
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+            <p style={{ fontSize: '0.78rem', color: '#b3b3b3', marginTop: '2px' }}>
               백지도의 지점을 클릭하여 해당 지역의 지형과 기후 특징을 확인하고 학습해 보세요.
             </p>
           </div>
         </div>
 
-        {/* Right Side Controls & Progress */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          {/* Progress Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '160px' }}>
-            <div style={{ flex: 1, height: '10px', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        {/* Right Controls & Progress */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Spotify Progress Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '170px' }}>
+            <div style={{ flex: 1, height: '8px', background: '#1f1f1f', borderRadius: '9999px', overflow: 'hidden', border: '1px solid #282828' }}>
               <div
                 style={{
                   width: `${progressPercent}%`,
                   height: '100%',
-                  background: 'linear-gradient(to right, #10b981, #34d399)',
-                  borderRadius: '10px',
-                  transition: 'width 0.4s ease'
+                  background: '#1ed760',
+                  borderRadius: '9999px',
+                  transition: 'width 0.3s ease'
                 }}
               />
             </div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', color: '#34d399' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px', color: '#1ed760' }}>
               <CheckCircle2 size={16} />
               <span>{completedCount} / {totalCount}</span>
             </div>
@@ -63,7 +94,7 @@ export default function Header({
           <button
             className="btn btn-secondary"
             onClick={() => { sound.playClick(); onOpenSummaryNote(); }}
-            style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
           >
             <FileText size={15} />
             <span>학습 요약 노트</span>
@@ -75,7 +106,7 @@ export default function Header({
               <button
                 className="btn btn-primary"
                 onClick={() => { sound.playClick(); onOpenTeacherDashboard(); }}
-                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #059669, #10b981)' }}
+                style={{ padding: '0.5rem 1.1rem', fontSize: '0.82rem' }}
               >
                 <Users size={15} />
                 <span>교사 워크스페이스</span>
@@ -84,10 +115,10 @@ export default function Header({
               <button
                 onClick={() => { sound.playClick(); onOpenLoginModal(); }}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
-                  borderRadius: '12px',
-                  padding: '0.35rem 0.75rem',
+                  background: '#1f1f1f',
+                  border: '1px solid #7c7c7c',
+                  borderRadius: '9999px',
+                  padding: '0.4rem 0.85rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
@@ -103,7 +134,7 @@ export default function Header({
                   style={{ width: '22px', height: '22px', borderRadius: '50%' }}
                 />
                 <span>{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
-                <span style={{ fontSize: '0.7rem', color: '#34d399' }}>
+                <span style={{ fontSize: '0.7rem', color: '#1ed760', fontWeight: 900 }}>
                   (교사)
                 </span>
               </button>
@@ -115,6 +146,3 @@ export default function Header({
     </header>
   );
 }
-
-
-
