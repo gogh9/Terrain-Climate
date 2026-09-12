@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Volume2, VolumeX, CheckCircle, HelpCircle, Eye, Sparkles, ArrowRight, ZoomIn } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
+import { saveQuizSubmission } from '../utils/supabaseService';
 
 export default function QuizModal({
   location,
@@ -82,6 +83,13 @@ export default function QuizModal({
         matchedKeywords: matchedFeatureKeywords
       });
       onComplete(location.id, { name: inputName, feature: inputFeature });
+      saveQuizSubmission({
+        locationId: location.id,
+        locationTitle: location.title,
+        answerName: inputName,
+        answerFeature: inputFeature,
+        score: 100
+      });
     } else if (isNameCorrect && !isFeatureGood) {
       setFeedback({
         isSuccess: false,
