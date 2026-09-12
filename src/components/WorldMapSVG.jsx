@@ -350,22 +350,10 @@ export default function WorldMapSVG({
                   stroke={strokeColor}
                   strokeWidth={strokeWidth}
                   style={{
-                    transition: 'fill 0.15s ease, stroke 0.15s ease',
-                    cursor: 'pointer'
+                    transition: 'fill 0.15s ease, stroke 0.15s ease'
                   }}
                   onMouseEnter={() => setHoveredFeature(feature)}
                   onMouseLeave={() => setHoveredFeature(null)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (countryData) {
-                      setSelectedCountry(countryData);
-                      setCountrySearch(countryData.nameKo);
-                    }
-                    const matchedLoc = findBestLocationForCountry(countryData, locations);
-                    if (matchedLoc) {
-                      handleSelectLocation(e, matchedLoc);
-                    }
-                  }}
                 />
               );
             })}
