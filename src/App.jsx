@@ -1,0 +1,123 @@
+import React, { useState, useEffect } from 'react';
+import Header from './components/Header';
+import WorldMapSVG from './components/WorldMapSVG';
+import QuizModal from './components/QuizModal';
+import SummaryNoteModal from './components/SummaryNoteModal';
+import AchievementBadge from './components/AchievementBadge';
+import { LOCATION_DATA } from './data/textbookData';
+import { sound } from './utils/audio';
+
+export default function App() {
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [continentFilter, setContinentFilter] = useState('ALL');
+
+  // Completed IDs & Typed Answers
+  const [completedIds, setCompletedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_completed_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [userAnswers, setUserAnswers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_user_answers');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [showSummaryNote, setShowSummaryNote] = useState(false);
+  const [showBadges, setShowBadges] = useState(false);
+
+  // Save progress to LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('geo_completed_ids', JSON.stringify(completedIds));
+      localStorage.setItem('geo_user_answers', JSON.stringify(userAnswers));
+    } catch (e) {
+      console.warn('LocalStorage save error', e);
+    }
+  }, [completedIds, userAnswers]);
+
+  // Filter locations
+  const filteredLocations = LOCATION_DATA.filter(loc => {
+    const matchesCategory = categoryFilter === 'all' || loc.category === categoryFilter;
+    const matchesContinent = continentFilter === 'ALL' || loc.continent === continentFilter;
+    return matchesCategory && matchesContinent;
+  });
+
+  // Complete Location Handler
+  const handleCompleteLocation = (id, answerObj) => {
+    if (!completedIds.includes(id)) {
+      const updatedIds = [...completedIds, id];
+      setCompletedIds(updatedIds);
+
+      // Check if all 15 completed
+      if (updatedIds.length === LOCATION_DATA.length) {
+        setTimeout(() => sound.playFanfare(), 600);
+      }
+    }
+
+    setUserAnswers(prev => ({
+      ...prev,
+      [id]: answerObj
+    }));
+  };
+
+  return (
+    <div className="app-container">
+      {/* Header Bar */}
+      <Header
+        completedIds={completedIds}
+        totalCount={LOCATION_DATA.length}
+        onOpenSummaryNote={() => setShowSummaryNote(true)}
+      />
+
+      {/* Main Vector SVG Map Matching User Reference Screenshot */}
+      <main className="main-content">
+        <WorldMapSVG
+          locations={LOCATION_DATA}
+          completedIds={completedIds}
+          onSelectLocation={(loc) => setSelectedLocation(loc)}
+          continentFilter="ALL"
+        />
+      </main>
+
+      {/* Location Quiz Modal */}
+      {selectedLocation && (
+        <QuizModal
+          location={selectedLocation}
+          onClose={() => setSelectedLocation(null)}
+          onComplete={handleCompleteLocation}
+          isAlreadyCompleted={completedIds.includes(selectedLocation.id)}
+          previousAnswer={userAnswers[selectedLocation.id]}
+        />
+      )}
+
+      {/* Summary Note Modal */}
+      {showSummaryNote && (
+        <SummaryNoteModal
+          locations={LOCATION_DATA}
+          completedIds={completedIds}
+          userAnswers={userAnswers}
+          onClose={() => setShowSummaryNote(false)}
+        />
+      )}
+
+      {/* Achievement Badges Modal */}
+      {showBadges && (
+        <AchievementBadge
+          completedCount={completedIds.length}
+          completedIds={completedIds}
+          locations={LOCATION_DATA}
+          onClose={() => setShowBadges(false)}
+        />
+      )}
+    </div>
+  );
+}

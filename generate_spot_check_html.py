@@ -1,0 +1,79 @@
+import os
+
+html_content = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Spot Photo Check</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; }
+    .spot-sec { margin-bottom: 30px; background: #1e293b; padding: 20px; border-radius: 12px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 15px; }
+    .card { background: #334155; padding: 10px; border-radius: 8px; max-width: 320px; }
+    img { width: 100%; max-height: 220px; object-fit: contain; background: #000; border-radius: 4px; }
+    .lbl { font-weight: bold; font-size: 13px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>6학년 사회 교과서 지형/기후 도판 후보 점검</h1>
+"""
+
+candidate_groups = {
+  "1. 마추픽추 (Machu Picchu) 후보": [
+    '초등_사회 6-2_1_교과서_13p_1.jpg',
+    '초등_사회 6-2_1_교과서_13p_2.jpg',
+    '초등_사회 6-2_1_교과서_13p_3.jpg',
+    '초등_사회 6-2_1_교과서_13p_4.jpg',
+    '초등_사회 6-2_1_교과서_13p_5.jpg',
+    '초등_사회 6-2_1_교과서_13p_6.jpg'
+  ],
+  "2. 열대 기후 (Tropical Climate) 후보": [
+    '초등_사회 6-2_1_교과서_27p_1.jpg',
+    '초등_사회 6-2_1_교과서_27p_4.jpg',
+    '초등_사회 6-2_1_교과서_28p_1.jpg',
+    '초등_사회 6-2_1_교과서_28p_2.jpg'
+  ],
+  "3. 건조 기후 (Dry Climate) 후보": [
+    '초등_사회 6-2_1_교과서_27p_2.jpg',
+    '초등_사회 6-2_1_교과서_30p_1.jpg'
+  ],
+  "4. 온대 기후 (Temperate Climate) 후보": [
+    '초등_사회 6-2_1_교과서_31p_1.jpg',
+    '초등_사회 6-2_1_교과서_32p_1.jpg',
+    '초등_사회 6-2_1_교과서_32p_2.jpg',
+    '초등_사회 6-2_1_교과서_32p_3.jpg'
+  ],
+  "5. 냉대 기후 (Boreal Climate) 후보": [
+    '초등_사회 6-2_1_교과서_33p_1.jpg',
+    '초등_사회 6-2_1_교과서_42p_5.jpg'
+  ],
+  "6. 한대 기후 (Polar Climate) 후보": [
+    '초등_사회 6-2_1_교과서_35p_2.jpg',
+    '초등_사회 6-2_1_교과서_35p_3.jpg',
+    '초등_사회 6-2_1_교과서_35p_4.jpg',
+    '초등_사회 6-2_1_교과서_35p_5.jpg'
+  ],
+  "7. 고산 기후 (Highland Climate) 후보": [
+    '초등_사회 6-2_1_교과서_36p_2.jpg',
+    '초등_사회 6-2_1_교과서_36p_3.jpg',
+    '초등_사회 6-2_1_교과서_36p_4.jpg',
+    '초등_사회 6-2_1_교과서_36p_5.jpg',
+    '초등_사회 6-2_1_교과서_37p_1.jpg',
+    '초등_사회 6-2_1_교과서_37p_4.jpg'
+  ]
+}
+
+for title, files in candidate_groups.items():
+    html_content += f'<div class="spot-sec"><h2>{title}</h2><div class="grid">'
+    for f in files:
+        fpath = f"./교과서 이미지/{f}"
+        if os.path.exists(fpath):
+            html_content += f'<div class="card"><div class="lbl">{f}</div><img src="{fpath}" /></div>'
+    html_content += '</div></div>'
+
+html_content += '</body></html>'
+
+with open("spot_check.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("spot_check.html successfully created!")
