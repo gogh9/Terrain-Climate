@@ -5,12 +5,32 @@ import QuizModal from './components/QuizModal';
 import SummaryNoteModal from './components/SummaryNoteModal';
 import AchievementBadge from './components/AchievementBadge';
 import TeacherDashboardModal from './components/TeacherDashboardModal';
+import LoginModal from './components/LoginModal';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
+import { supabase } from './supabase';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [continentFilter, setContinentFilter] = useState('ALL');
+
+  // User Auth State
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Subscribe to Supabase Auth Changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Completed IDs & Typed Answers
   const [completedIds, setCompletedIds] = useState(() => {
@@ -62,14 +82,6 @@ export default function App() {
     }
   }, [completedIds, userAnswers]);
 
-
-  // Filter locations
-  const filteredLocations = LOCATION_DATA.filter(loc => {
-    const matchesCategory = categoryFilter === 'all' || loc.category === categoryFilter;
-    const matchesContinent = continentFilter === 'ALL' || loc.continent === continentFilter;
-    return matchesCategory && matchesContinent;
-  });
-
   // Complete Location Handler
   const handleCompleteLocation = (id, answerObj) => {
     if (!completedIds.includes(id)) {
@@ -96,6 +108,9 @@ export default function App() {
         totalCount={LOCATION_DATA.length}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
         onOpenTeacherDashboard={() => setShowTeacherDashboard(true)}
+        user={user}
+        userRole={userRole}
+        onOpenLoginModal={() => setShowLoginModal(true)}
       />
 
       {/* Main Vector SVG Map Matching User Reference Screenshot */}
@@ -116,6 +131,7 @@ export default function App() {
           onComplete={handleCompleteLocation}
           isAlreadyCompleted={completedIds.includes(selectedLocation.id)}
           previousAnswer={userAnswers[selectedLocation.id]}
+          user={user}
         />
       )}
 
@@ -137,6 +153,16 @@ export default function App() {
         />
       )}
 
+      {/* Google Login Modal */}
+      {showLoginModal && (
+        <LoginModal
+          user={user}
+          userRole={userRole}
+          setUserRole={setUserRole}
+          onClose={() => setShowLoginModal(false)}
+        />
+      )}
+
       {/* Achievement Badges Modal */}
       {showBadges && (
         <AchievementBadge
@@ -149,4 +175,5 @@ export default function App() {
     </div>
   );
 }
+
 

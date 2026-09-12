@@ -9,9 +9,15 @@ export default function QuizModal({
   onClose,
   onComplete,
   isAlreadyCompleted,
-  previousAnswer
+  previousAnswer,
+  user
 }) {
   const [activeTab, setActiveTab] = useState(isAlreadyCompleted ? 'review' : 'quiz'); // 'quiz' | 'explore' | 'review'
+  const [studentName, setStudentName] = useState(() => {
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+    if (user?.email) return user.email.split('@')[0];
+    return localStorage.getItem('geo_last_student_name') || '';
+  });
   const [inputName, setInputName] = useState(previousAnswer?.name || '');
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
   const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100 } : null);
@@ -51,12 +57,17 @@ export default function QuizModal({
   // Evaluate Student Submission
   const handleSubmitQuiz = (e) => {
     e.preventDefault();
+    if (!studentName.trim()) {
+      alert('학생 이름을 입력해 주세요!');
+      return;
+    }
     if (!inputName.trim() || !inputFeature.trim()) {
       alert('지형/기후 명칭과 특징을 모두 입력해 주세요!');
       return;
     }
 
     sound.playClick();
+    localStorage.setItem('geo_last_student_name', studentName.trim());
 
     // 1. Name Check
     const cleanName = inputName.trim().replace(/\s+/g, '');
@@ -85,12 +96,14 @@ export default function QuizModal({
       onComplete(location.id, { name: inputName, feature: inputFeature });
       saveQuizSubmission({
         locationId: location.id,
-        locationTitle: location.title,
+        locationTitle: location.name,
+        studentName: studentName.trim(),
         answerName: inputName,
         answerFeature: inputFeature,
         score: 100
       });
-    } else if (isNameCorrect && !isFeatureGood) {
+    }
+ else if (isNameCorrect && !isFeatureGood) {
       setFeedback({
         isSuccess: false,
         score: 50,
@@ -237,11 +250,36 @@ export default function QuizModal({
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
+                {/* Student Name Input */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '1.05rem', fontWeight: 900, color: '#38bdf8', marginBottom: '6px' }}>
+                    👤 학생 이름 (작성자):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="이름을 입력하세요 (예: 홍길동)"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 1.1rem',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                      borderRadius: '12px',
+                      color: '#34d399',
+                      fontSize: '1.05rem',
+                      fontWeight: 800,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
                 {/* Input 1: Name */}
                 <div>
                   <label style={{ display: 'block', fontSize: '1.1rem', fontWeight: 900, color: '#f8fafc', marginBottom: '8px' }}>
                     1. {location.categoryName} 명칭을 입력하세요:
                   </label>
+
                   <input
                     type="text"
                     value={inputName}

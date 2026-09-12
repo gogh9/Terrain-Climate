@@ -98,3 +98,49 @@ export async function deleteSubmission(id) {
   }
 }
 
+/**
+ * Sign in with Google OAuth
+ */
+export async function signInWithGoogle() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) throw error;
+    return { success: true, data };
+  } catch (err) {
+    console.error('Google 로그인 에러:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Sign out user
+ */
+export async function signOutUser() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    console.error('로그아웃 에러:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Get current user
+ */
+export async function getCurrentUser() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+

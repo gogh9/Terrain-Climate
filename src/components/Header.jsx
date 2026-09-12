@@ -1,12 +1,15 @@
 import React from 'react';
-import { Globe, FileText, CheckCircle2, Users } from 'lucide-react';
+import { Globe, FileText, CheckCircle2, Users, LogIn, User } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 export default function Header({
   completedIds,
   totalCount,
   onOpenSummaryNote,
-  onOpenTeacherDashboard
+  onOpenTeacherDashboard,
+  user,
+  userRole,
+  onOpenLoginModal
 }) {
   const completedCount = completedIds.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
@@ -38,7 +41,7 @@ export default function Header({
         {/* Right Side Controls & Progress */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           {/* Progress Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '180px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '160px' }}>
             <div style={{ flex: 1, height: '10px', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <div
                 style={{
@@ -74,11 +77,51 @@ export default function Header({
             <Users size={15} />
             <span>선생님 대시보드</span>
           </button>
+
+          {/* User Auth Profile / Login Button */}
+          {user ? (
+            <button
+              onClick={() => { sound.playClick(); onOpenLoginModal(); }}
+              style={{
+                background: 'rgba(15, 23, 42, 0.7)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                borderRadius: '12px',
+                padding: '0.35rem 0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '0.82rem',
+                fontWeight: 700
+              }}
+            >
+              <img
+                src={user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user'}
+                alt="Profile"
+                style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+              />
+              <span>{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+              <span style={{ fontSize: '0.7rem', color: userRole === 'teacher' ? '#34d399' : '#38bdf8' }}>
+                ({userRole === 'teacher' ? '교사' : '학생'})
+              </span>
+            </button>
+          ) : (
+            <button
+              className="btn btn-secondary"
+              onClick={() => { sound.playClick(); onOpenLoginModal(); }}
+              style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' }}
+            >
+              <LogIn size={15} />
+              <span>구글 로그인</span>
+            </button>
+          )}
         </div>
 
       </div>
     </header>
   );
 }
+
 
 
