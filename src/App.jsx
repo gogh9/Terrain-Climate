@@ -17,22 +17,27 @@ export default function App() {
 
   // User Auth & Screen Mode
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isGuestMode, setIsGuestMode] = useState(false);
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
+    }).catch(() => {
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
 
   // Completed IDs & Typed Answers
   const [completedIds, setCompletedIds] = useState(() => {
@@ -102,6 +107,16 @@ export default function App() {
     }));
   };
 
+  // Show loading indicator while parsing URL hash auth token
+  if (authLoading) {
+    return (
+      <div style={{ width: '100vw', height: '100vh', background: '#0d0d0d', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#1db954', fontFamily: 'sans-serif' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>구글 로그인 인증 확인 중...</div>
+      </div>
+    );
+  }
+
   // If user is not logged in, show the Landing Screen (Google Login required to proceed)
   if (!user) {
     return (
@@ -110,6 +125,7 @@ export default function App() {
       />
     );
   }
+
 
 
   return (
