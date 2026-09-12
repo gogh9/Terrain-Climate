@@ -5,25 +5,28 @@ import QuizModal from './components/QuizModal';
 import SummaryNoteModal from './components/SummaryNoteModal';
 import AchievementBadge from './components/AchievementBadge';
 import TeacherDashboardModal from './components/TeacherDashboardModal';
+import TeacherWorkspace from './components/TeacherWorkspace';
 import LoginModal from './components/LoginModal';
 import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
+import { signOutUser } from './utils/supabaseService';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [continentFilter, setContinentFilter] = useState('ALL');
 
-  // User Auth & Screen Mode
+  // User Auth & View Mode
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
+  const [currentSession, setCurrentSession] = useState(null);
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
-    // Check for auth errors in hash or search query
     try {
       const fullUrl = window.location.href;
       if (fullUrl.includes('error=')) {
@@ -53,7 +56,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-
+  // Check URL parameters for Student Session links (?session=...)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session');
+      if (sessionId) {
+        setActiveView('map');
+      }
+    } catch (e) {
+      console.warn('URL param parse error', e);
+    }
+  }, []);
 
   // Completed IDs & Typed Answers
   const [completedIds, setCompletedIds] = useState(() => {
@@ -79,22 +93,6 @@ export default function App() {
   const [showBadges, setShowBadges] = useState(false);
   const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
-  // Check URL parameters for direct teacher access (?mode=teacher or #teacher)
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (
-        params.get('mode') === 'teacher' ||
-        params.get('teacher') === 'true' ||
-        window.location.hash === '#teacher'
-      ) {
-        setShowTeacherDashboard(true);
-      }
-    } catch (e) {
-      console.warn('URL param parse error', e);
-    }
-  }, []);
-
   // Save progress to LocalStorage
   useEffect(() => {
     try {
@@ -111,7 +109,6 @@ export default function App() {
       const updatedIds = [...completedIds, id];
       setCompletedIds(updatedIds);
 
-      // Check if all 15 completed
       if (updatedIds.length === LOCATION_DATA.length) {
         setTimeout(() => sound.playFanfare(), 600);
       }
@@ -121,6 +118,14 @@ export default function App() {
       ...prev,
       [id]: answerObj
     }));
+  };
+
+  // Logout Handler
+  const handleLogout = async () => {
+    sound.playClick();
+    await signOutUser();
+    setUser(null);
+    setActiveView('workspace');
   };
 
   // Show loading indicator while parsing URL hash auth token
@@ -133,8 +138,11 @@ export default function App() {
     );
   }
 
-  // If user is not logged in, show the Landing Screen (Google Login required to proceed)
-  if (!user) {
+  // If user is not logged in and not accessing student session link, show Landing Screen
+  const params = new URLSearchParams(window.location.search);
+  const isStudentSession = Boolean(params.get('session'));
+
+  if (!user && !isStudentSession) {
     return (
       <LandingScreen
         setUserRole={setUserRole}
@@ -142,7 +150,20 @@ export default function App() {
     );
   }
 
-
+  // If Teacher is logged in and activeView is 'workspace', show Teacher Workspace (Reference Screenshot Design)
+  if (user && activeView === 'workspace') {
+    return (
+      <TeacherWorkspace
+        user={user}
+        locations={LOCATION_DATA}
+        onEnterMap={(session) => {
+          setCurrentSession(session);
+          setActiveView('map');
+        }}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
     <div className="app-container">
@@ -151,7 +172,10 @@ export default function App() {
         completedIds={completedIds}
         totalCount={LOCATION_DATA.length}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
-        onOpenTeacherDashboard={() => setShowTeacherDashboard(true)}
+        onOpenTeacherDashboard={() => {
+          if (user) setActiveView('workspace');
+          else setShowTeacherDashboard(true);
+        }}
         user={user}
         userRole={userRole}
         onOpenLoginModal={() => setShowLoginModal(true)}
@@ -219,6 +243,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
