@@ -360,28 +360,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 </select>
               </div>
 
-              {/* Continent Checkboxes */}
-              <div style={{ background: '#222222', padding: '0.85rem', borderRadius: '8px', border: '1px solid #2d2d2d' }}>
-                <div style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: 700, marginBottom: '6px' }}>
-                  입력 허용 대륙:
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', fontSize: '0.82rem' }}>
-                  {ALL_CONTINENTS.map(cont => {
-                    const isChecked = session.continents.includes(cont);
-                    return (
-                      <label key={cont} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: isChecked ? '#38bdf8' : '#71717a' }}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleContinentToggle(session.id, cont)}
-                          style={{ accentColor: '#10b981', cursor: 'pointer' }}
-                        />
-                        <span>{cont}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+
 
               {/* Big Green Copy Button */}
               <button
