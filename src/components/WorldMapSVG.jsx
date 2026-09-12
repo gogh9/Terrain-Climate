@@ -7,14 +7,14 @@ import { ZoomIn, ZoomOut, RotateCcw, Search, Globe, X } from 'lucide-react';
 import { getCountryByFeature, searchCountries, COUNTRY_LIST } from '../data/countryData';
 
 const CONTINENT_VIEWS = {
-  'ALL': { center: [0, 10], scale: 165 },
-  '아시아': { center: [90, 30], scale: 320 },
-  '유럽': { center: [15, 52], scale: 500 },
-  '아프리카': { center: [20, 0], scale: 300 },
-  '북아메리카': { center: [-100, 45], scale: 280 },
-  '남아메리카': { center: [-60, -25], scale: 290 },
+  'ALL': { center: [0, 15], scale: 153 },
+  '아시아': { center: [95, 32], scale: 320 },
+  '유럽': { center: [18, 50], scale: 480 },
+  '아프리카': { center: [20, 2], scale: 300 },
+  '북아메리카': { center: [-100, 42], scale: 280 },
+  '남아메리카': { center: [-60, -22], scale: 290 },
   '오세아니아': { center: [135, -25], scale: 340 },
-  '극지방': { center: [0, 80], scale: 250 }
+  '극지방': { center: [0, 75], scale: 260 }
 };
 
 const COUNTRY_TO_LOCATION_MAP = {
@@ -116,12 +116,12 @@ export default function WorldMapSVG({
   
   const projection = useMemo(() => {
     try {
-      return d3Geo.geoEqualEarth()
+      return d3Geo.geoEquirectangular()
         .scale(viewConfig.scale)
         .center(viewConfig.center)
         .translate([480, 260]);
     } catch (e) {
-      return d3Geo.geoEquirectangular().scale(150).translate([480, 260]);
+      return d3Geo.geoEquirectangular().scale(153).translate([480, 260]);
     }
   }, [viewConfig]);
 
@@ -283,84 +283,108 @@ export default function WorldMapSVG({
             <stop offset="0%" stopColor="#1ed760" />
             <stop offset="100%" stopColor="#1db954" />
           </linearGradient>
+          {/* Map Frame Clip for Seamless Rounded Border Fitting */}
+          <clipPath id="map-frame-clip">
+            <rect
+              x="12"
+              y="12"
+              width="936"
+              height="496"
+              rx="24"
+              ry="24"
+            />
+          </clipPath>
         </defs>
 
-        {/* Ocean Background Rounded Rectangle */}
+        {/* Clipped Map Content (Ocean, Graticules, Countries) */}
+        <g clipPath="url(#map-frame-clip)">
+          {/* Ocean Background */}
+          <rect
+            x="0"
+            y="0"
+            width="960"
+            height="520"
+            fill="url(#ocean-gradient)"
+          />
+
+          {/* Latitude & Longitude Graticule Lines */}
+          {graticules && (
+            <path
+              d={graticules}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth="0.8"
+              strokeDasharray="3,3"
+            />
+          )}
+
+          {/* Country Polygons (Crisp White Map) */}
+          <g>
+            {countries.map((feature, i) => {
+              const countryPath = pathGenerator(feature);
+              if (!countryPath) return null;
+
+              const countryData = getCountryByFeature(feature);
+              const isHovered = hoveredFeature?.id === feature.id || (hoveredFeature && hoveredFeature.properties?.name === feature.properties?.name);
+              const isSelected = selectedCountry && countryData && (selectedCountry.code === countryData.code || selectedCountry.id === countryData.id);
+
+              let fillColor = '#ffffff';
+              let strokeColor = '#94a3b8';
+              let strokeWidth = '0.7';
+
+              if (isSelected) {
+                fillColor = '#86efac';
+                strokeColor = '#16a34a';
+                strokeWidth = '1.8';
+              } else if (isHovered) {
+                fillColor = '#bae6fd';
+                strokeColor = '#0284c7';
+                strokeWidth = '1.6';
+              }
+
+              return (
+                <path
+                  key={feature.id || i}
+                  d={countryPath}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  style={{
+                    transition: 'fill 0.15s ease, stroke 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={() => setHoveredFeature(feature)}
+                  onMouseLeave={() => setHoveredFeature(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (countryData) {
+                      setSelectedCountry(countryData);
+                      setCountrySearch(countryData.nameKo);
+                    }
+                    const matchedLoc = findBestLocationForCountry(countryData, locations);
+                    if (matchedLoc) {
+                      handleSelectLocation(e, matchedLoc);
+                    }
+                  }}
+                />
+              );
+            })}
+          </g>
+        </g>
+
+        {/* Outer Elegant Border Frame */}
         <rect
-          x="15"
-          y="15"
-          width="930"
-          height="490"
-          rx="40"
-          ry="40"
-          fill="url(#ocean-gradient)"
+          x="12"
+          y="12"
+          width="936"
+          height="496"
+          rx="24"
+          ry="24"
+          fill="none"
           stroke="#282828"
           strokeWidth="2"
+          pointerEvents="none"
         />
-
-        {/* Latitude & Longitude Graticule Lines */}
-        {graticules && (
-          <path
-            d={graticules}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.08)"
-            strokeWidth="0.8"
-            strokeDasharray="3,3"
-          />
-        )}
-
-        {/* Country Polygons (Crisp White Map) */}
-        <g>
-          {countries.map((feature, i) => {
-            const countryPath = pathGenerator(feature);
-            if (!countryPath) return null;
-
-            const countryData = getCountryByFeature(feature);
-            const isHovered = hoveredFeature?.id === feature.id || (hoveredFeature && hoveredFeature.properties?.name === feature.properties?.name);
-            const isSelected = selectedCountry && countryData && (selectedCountry.code === countryData.code || selectedCountry.id === countryData.id);
-
-            let fillColor = '#ffffff';
-            let strokeColor = '#94a3b8';
-            let strokeWidth = '0.7';
-
-            if (isSelected) {
-              fillColor = '#86efac';
-              strokeColor = '#16a34a';
-              strokeWidth = '1.8';
-            } else if (isHovered) {
-              fillColor = '#bae6fd';
-              strokeColor = '#0284c7';
-              strokeWidth = '1.6';
-            }
-
-            return (
-              <path
-                key={feature.id || i}
-                d={countryPath}
-                fill={fillColor}
-                stroke={strokeColor}
-                strokeWidth={strokeWidth}
-                style={{
-                  transition: 'fill 0.15s ease, stroke 0.15s ease',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={() => setHoveredFeature(feature)}
-                onMouseLeave={() => setHoveredFeature(null)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (countryData) {
-                    setSelectedCountry(countryData);
-                    setCountrySearch(countryData.nameKo);
-                  }
-                  const matchedLoc = findBestLocationForCountry(countryData, locations);
-                  if (matchedLoc) {
-                    handleSelectLocation(e, matchedLoc);
-                  }
-                }}
-              />
-            );
-          })}
-        </g>
 
         {/* Location Pretty Flag Pin Markers */}
         {locations.map(loc => {
