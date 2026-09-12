@@ -23,6 +23,21 @@ export default function App() {
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
+    // Check for auth errors in hash or search query
+    try {
+      const fullUrl = window.location.href;
+      if (fullUrl.includes('error=')) {
+        const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+        const searchParams = new URLSearchParams(window.location.search);
+        const errorDesc = hashParams.get('error_description') || searchParams.get('error_description') || hashParams.get('error') || searchParams.get('error');
+        if (errorDesc) {
+          alert(`🚨 구글 로그인 처리 중 오류 발생:\n${decodeURIComponent(errorDesc).replace(/\+/g, ' ')}\n\n(Supabase 대시보드 -> Authentication -> Providers -> Google 설정이 활성화되어 있는지 확인해 주세요)`);
+        }
+      }
+    } catch (e) {
+      console.warn('Error parsing URL auth error', e);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
@@ -37,6 +52,7 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
 
 
   // Completed IDs & Typed Answers
