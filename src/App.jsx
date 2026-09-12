@@ -4,6 +4,7 @@ import WorldMapSVG from './components/WorldMapSVG';
 import QuizModal from './components/QuizModal';
 import SummaryNoteModal from './components/SummaryNoteModal';
 import AchievementBadge from './components/AchievementBadge';
+import TeacherDashboardModal from './components/TeacherDashboardModal';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 
@@ -33,6 +34,7 @@ export default function App() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showSummaryNote, setShowSummaryNote] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
+  const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
   // Save progress to LocalStorage
   useEffect(() => {
@@ -76,6 +78,7 @@ export default function App() {
         completedIds={completedIds}
         totalCount={LOCATION_DATA.length}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
+        onOpenTeacherDashboard={() => setShowTeacherDashboard(true)}
       />
 
       {/* Main Vector SVG Map Matching User Reference Screenshot */}
@@ -109,6 +112,14 @@ export default function App() {
         />
       )}
 
+      {/* Teacher Submissions Dashboard Modal */}
+      {showTeacherDashboard && (
+        <TeacherDashboardModal
+          locations={LOCATION_DATA}
+          onClose={() => setShowTeacherDashboard(false)}
+        />
+      )}
+
       {/* Achievement Badges Modal */}
       {showBadges && (
         <AchievementBadge
@@ -121,3 +132,4 @@ export default function App() {
     </div>
   );
 }
+

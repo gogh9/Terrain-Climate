@@ -1,11 +1,12 @@
 import React from 'react';
-import { Globe, FileText, CheckCircle2 } from 'lucide-react';
+import { Globe, FileText, CheckCircle2, Users } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 export default function Header({
   completedIds,
   totalCount,
-  onOpenSummaryNote
+  onOpenSummaryNote,
+  onOpenTeacherDashboard
 }) {
   const completedCount = completedIds.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
@@ -35,9 +36,9 @@ export default function Header({
         </div>
 
         {/* Right Side Controls & Progress */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           {/* Progress Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '200px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '180px' }}>
             <div style={{ flex: 1, height: '10px', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <div
                 style={{
@@ -55,14 +56,23 @@ export default function Header({
             </div>
           </div>
 
-          {/* Action Button */}
+          {/* Action Buttons */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => { sound.playClick(); onOpenSummaryNote(); }}
+            style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }}
+          >
+            <FileText size={15} />
+            <span>학습 요약 노트</span>
+          </button>
+
           <button
             className="btn btn-primary"
-            onClick={() => { sound.playClick(); onOpenSummaryNote(); }}
-            style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
+            onClick={() => { sound.playClick(); onOpenTeacherDashboard(); }}
+            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #059669, #10b981)' }}
           >
-            <FileText size={16} />
-            <span>학습 요약 노트</span>
+            <Users size={15} />
+            <span>선생님 대시보드</span>
           </button>
         </div>
 
@@ -70,4 +80,5 @@ export default function Header({
     </header>
   );
 }
+
 

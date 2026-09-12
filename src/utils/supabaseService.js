@@ -46,13 +46,10 @@ export async function saveQuizSubmission({
 }
 
 /**
- * Fetch recent student submissions
+ * Fetch all student submissions from Supabase
  */
-export async function fetchRecentSubmissions(limit = 10) {
+export async function fetchAllSubmissions(limit = 300) {
   try {
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!anonKey) return [];
-
     const { data, error } = await supabase
       .from('quiz_submissions')
       .select('*')
@@ -61,12 +58,43 @@ export async function fetchRecentSubmissions(limit = 10) {
 
     if (error) {
       console.warn('Supabase 조회 실패:', error.message);
-      return [];
+      return { success: false, error: error.message, data: [] };
     }
 
-    return data || [];
+    return { success: true, data: data || [] };
   } catch (err) {
     console.error('Supabase 조회 오류:', err);
-    return [];
+    return { success: false, error: err.message, data: [] };
   }
 }
+
+/**
+ * Fetch recent student submissions
+ */
+export async function fetchRecentSubmissions(limit = 10) {
+  const res = await fetchAllSubmissions(limit);
+  return res.data || [];
+}
+
+/**
+ * Delete a submission from Supabase by ID
+ */
+export async function deleteSubmission(id) {
+  try {
+    const { data, error } = await supabase
+      .from('quiz_submissions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.warn('Supabase 삭제 실패:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error('Supabase 삭제 오류:', err);
+    return { success: false, error: err.message };
+  }
+}
+
