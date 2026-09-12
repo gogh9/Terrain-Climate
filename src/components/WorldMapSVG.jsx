@@ -309,7 +309,7 @@ export default function WorldMapSVG({
           />
         )}
 
-        {/* Country Polygons */}
+        {/* Country Polygons (Crisp White Map) */}
         <g>
           {countries.map((feature, i) => {
             const countryPath = pathGenerator(feature);
@@ -319,17 +319,27 @@ export default function WorldMapSVG({
             const isHovered = hoveredFeature?.id === feature.id || (hoveredFeature && hoveredFeature.properties?.name === feature.properties?.name);
             const isSelected = selectedCountry && countryData && (selectedCountry.code === countryData.code || selectedCountry.id === countryData.id);
 
-            let fillColor = '#242424';
-            if (isSelected) fillColor = '#1ed760';
-            else if (isHovered) fillColor = '#333333';
+            let fillColor = '#ffffff';
+            let strokeColor = '#94a3b8';
+            let strokeWidth = '0.7';
+
+            if (isSelected) {
+              fillColor = '#86efac';
+              strokeColor = '#16a34a';
+              strokeWidth = '1.8';
+            } else if (isHovered) {
+              fillColor = '#bae6fd';
+              strokeColor = '#0284c7';
+              strokeWidth = '1.6';
+            }
 
             return (
               <path
                 key={feature.id || i}
                 d={countryPath}
                 fill={fillColor}
-                stroke={isHovered ? '#1ed760' : '#181818'}
-                strokeWidth={isHovered ? "1.6" : "0.7"}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
                 style={{
                   transition: 'fill 0.15s ease, stroke 0.15s ease',
                   cursor: 'pointer'
