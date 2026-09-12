@@ -69,52 +69,45 @@ export default function Header({
             <span>학습 요약 노트</span>
           </button>
 
-          <button
-            className="btn btn-primary"
-            onClick={() => { sound.playClick(); onOpenTeacherDashboard(); }}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #059669, #10b981)' }}
-          >
-            <Users size={15} />
-            <span>선생님 대시보드</span>
-          </button>
+          {/* Teacher Navigation & User Profile (Only shown when Teacher is logged in) */}
+          {user && (
+            <>
+              <button
+                className="btn btn-primary"
+                onClick={() => { sound.playClick(); onOpenTeacherDashboard(); }}
+                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', background: 'linear-gradient(135deg, #059669, #10b981)' }}
+              >
+                <Users size={15} />
+                <span>교사 워크스페이스</span>
+              </button>
 
-          {/* User Auth Profile / Login Button */}
-          {user ? (
-            <button
-              onClick={() => { sound.playClick(); onOpenLoginModal(); }}
-              style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                borderRadius: '12px',
-                padding: '0.35rem 0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '0.82rem',
-                fontWeight: 700
-              }}
-            >
-              <img
-                src={user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user'}
-                alt="Profile"
-                style={{ width: '22px', height: '22px', borderRadius: '50%' }}
-              />
-              <span>{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
-              <span style={{ fontSize: '0.7rem', color: userRole === 'teacher' ? '#34d399' : '#38bdf8' }}>
-                ({userRole === 'teacher' ? '교사' : '학생'})
-              </span>
-            </button>
-          ) : (
-            <button
-              className="btn btn-secondary"
-              onClick={() => { sound.playClick(); onOpenLoginModal(); }}
-              style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' }}
-            >
-              <LogIn size={15} />
-              <span>구글 로그인</span>
-            </button>
+              <button
+                onClick={() => { sound.playClick(); onOpenLoginModal(); }}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  borderRadius: '12px',
+                  padding: '0.35rem 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 700
+                }}
+              >
+                <img
+                  src={user.user_metadata?.avatar_url || 'https://lh3.googleusercontent.com/a/default-user'}
+                  alt="Profile"
+                  style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+                />
+                <span>{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+                <span style={{ fontSize: '0.7rem', color: '#34d399' }}>
+                  (교사)
+                </span>
+              </button>
+            </>
           )}
         </div>
 
