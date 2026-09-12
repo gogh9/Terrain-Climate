@@ -102,15 +102,15 @@ export default function App() {
     }));
   };
 
-  // If user is not logged in and not in guest mode, show the requested Landing Initial Screen
-  if (!user && !isGuestMode) {
+  // If user is not logged in, show the Landing Screen (Google Login required to proceed)
+  if (!user) {
     return (
       <LandingScreen
         setUserRole={setUserRole}
-        onEnterMap={() => setIsGuestMode(true)}
       />
     );
   }
+
 
   return (
     <div className="app-container">

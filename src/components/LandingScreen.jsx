@@ -104,40 +104,10 @@ export default function LandingScreen({ setUserRole }) {
           GOOGLE 로그인
         </button>
 
-        {/* Optional Student Direct Entrance */}
-        {onEnterMap && (
-          <button
-            onClick={() => { sound.playClick(); onEnterMap(); }}
-            style={{
-              marginTop: '1rem',
-              width: '100%',
-              padding: '0.85rem',
-              borderRadius: '9999px',
-              background: 'transparent',
-              border: '1px solid #333333',
-              color: '#38bdf8',
-              fontSize: '0.95rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#38bdf8';
-              e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#333333';
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            🗺️ 학생 탐험 바로가기 (로그인 없음)
-          </button>
-        )}
-
         {/* Footer Credit */}
         <div
           style={{
-            marginTop: '2.5rem',
+            marginTop: '3rem',
             fontSize: '0.88rem',
             color: '#71717a',
             letterSpacing: '-0.01em'
@@ -145,6 +115,7 @@ export default function LandingScreen({ setUserRole }) {
         >
           powerd by sota / gogh999@gmail.com
         </div>
+
 
 
         {/* Footer Links */}
