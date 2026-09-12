@@ -93,7 +93,8 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
   // Copy Student Distribution Link
   const handleCopyLink = (session) => {
     sound.playClick();
-    const link = `${window.location.origin}/?session=${session.id}`;
+    const cat = session.categoryFilter || 'all';
+    const link = `${window.location.origin}/?session=${session.id}&category=${cat}`;
     navigator.clipboard.writeText(link);
     setCopiedId(session.id);
     alert(`📋 학생 배부용 링크가 복사되었습니다!\n\n${link}`);

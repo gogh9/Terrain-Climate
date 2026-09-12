@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import WorldMapSVG from './components/WorldMapSVG';
 import QuizModal from './components/QuizModal';
@@ -24,6 +24,7 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);
+  const [urlCategory, setUrlCategory] = useState(null);
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
@@ -56,18 +57,45 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check URL parameters for Student Session links (?session=...)
+  // Check URL parameters for Student Session links (?session=...&category=...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session');
+      const categoryParam = params.get('category');
       if (sessionId) {
         setActiveView('map');
+      }
+      if (categoryParam) {
+        setUrlCategory(categoryParam);
+      } else if (sessionId) {
+        const saved = localStorage.getItem('geo_map_sessions');
+        if (saved) {
+          const sessions = JSON.parse(saved);
+          const found = sessions.find(s => s.id === sessionId);
+          if (found && found.categoryFilter) {
+            setUrlCategory(found.categoryFilter);
+          }
+        }
       }
     } catch (e) {
       console.warn('URL param parse error', e);
     }
   }, []);
+
+  // Determine active category filter
+  const activeCategoryFilter = urlCategory || currentSession?.categoryFilter || categoryFilter || 'all';
+
+  // Filter locations based on active category filter ('all' | 'landform' | 'climate')
+  const displayedLocations = useMemo(() => {
+    if (activeCategoryFilter === 'landform') {
+      return LOCATION_DATA.filter(loc => loc.category === 'landform');
+    }
+    if (activeCategoryFilter === 'climate') {
+      return LOCATION_DATA.filter(loc => loc.category === 'climate');
+    }
+    return LOCATION_DATA;
+  }, [activeCategoryFilter]);
 
   // Completed IDs & Typed Answers
   const [completedIds, setCompletedIds] = useState(() => {
@@ -109,7 +137,7 @@ export default function App() {
       const updatedIds = [...completedIds, id];
       setCompletedIds(updatedIds);
 
-      if (updatedIds.length === LOCATION_DATA.length) {
+      if (updatedIds.length === displayedLocations.length) {
         setTimeout(() => sound.playFanfare(), 600);
       }
     }
@@ -131,7 +159,7 @@ export default function App() {
   // Show loading indicator while parsing URL hash auth token
   if (authLoading) {
     return (
-      <div style={{ width: '100vw', height: '100vh', background: '#0d0d0d', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#1db954', fontFamily: 'sans-serif' }}>
+      <div style={{ width: '100vw', height: '100vh', background: '#121212', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#1ed760', fontFamily: 'sans-serif' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔄</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>구글 로그인 인증 확인 중...</div>
       </div>
@@ -150,7 +178,7 @@ export default function App() {
     );
   }
 
-  // If Teacher is logged in and activeView is 'workspace', show Teacher Workspace (Reference Screenshot Design)
+  // If Teacher is logged in and activeView is 'workspace', show Teacher Workspace
   if (user && activeView === 'workspace') {
     return (
       <TeacherWorkspace
@@ -158,6 +186,7 @@ export default function App() {
         locations={LOCATION_DATA}
         onEnterMap={(session) => {
           setCurrentSession(session);
+          setUrlCategory(session.categoryFilter);
           setActiveView('map');
         }}
         onLogout={handleLogout}
@@ -170,7 +199,8 @@ export default function App() {
       {/* Header Bar */}
       <Header
         completedIds={completedIds}
-        totalCount={LOCATION_DATA.length}
+        totalCount={displayedLocations.length}
+        categoryFilter={activeCategoryFilter}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
         onOpenTeacherDashboard={() => {
           if (user) setActiveView('workspace');
@@ -181,10 +211,10 @@ export default function App() {
         onOpenLoginModal={() => setShowLoginModal(true)}
       />
 
-      {/* Main Vector SVG Map Matching User Reference Screenshot */}
+      {/* Main Vector SVG Map */}
       <main className="main-content">
         <WorldMapSVG
-          locations={LOCATION_DATA}
+          locations={displayedLocations}
           completedIds={completedIds}
           onSelectLocation={(loc) => setSelectedLocation(loc)}
           continentFilter="ALL"
@@ -206,7 +236,7 @@ export default function App() {
       {/* Summary Note Modal */}
       {showSummaryNote && (
         <SummaryNoteModal
-          locations={LOCATION_DATA}
+          locations={displayedLocations}
           completedIds={completedIds}
           userAnswers={userAnswers}
           onClose={() => setShowSummaryNote(false)}
@@ -236,14 +266,10 @@ export default function App() {
         <AchievementBadge
           completedCount={completedIds.length}
           completedIds={completedIds}
-          locations={LOCATION_DATA}
+          locations={displayedLocations}
           onClose={() => setShowBadges(false)}
         />
       )}
     </div>
   );
 }
-
-
-
-

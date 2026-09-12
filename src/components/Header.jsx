@@ -9,7 +9,8 @@ export default function Header({
   onOpenTeacherDashboard,
   user,
   userRole,
-  onOpenLoginModal
+  onOpenLoginModal,
+  categoryFilter = 'all'
 }) {
   const completedCount = completedIds.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
@@ -60,7 +61,7 @@ export default function Header({
                   letterSpacing: '0.8px'
                 }}
               >
-                교과서 백지도
+                {categoryFilter === 'landform' ? '🏔️ 지형만 보기' : categoryFilter === 'climate' ? '☀️ 기후만 보기' : '🗺️ 지형&기후 전체'}
               </span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#b3b3b3', marginTop: '2px' }}>
