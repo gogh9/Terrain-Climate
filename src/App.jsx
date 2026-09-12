@@ -6,6 +6,7 @@ import SummaryNoteModal from './components/SummaryNoteModal';
 import AchievementBadge from './components/AchievementBadge';
 import TeacherDashboardModal from './components/TeacherDashboardModal';
 import LoginModal from './components/LoginModal';
+import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
@@ -14,10 +15,11 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [continentFilter, setContinentFilter] = useState('ALL');
 
-  // User Auth State
+  // User Auth & Screen Mode
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
@@ -100,6 +102,16 @@ export default function App() {
     }));
   };
 
+  // If user is not logged in and not in guest mode, show the requested Landing Initial Screen
+  if (!user && !isGuestMode) {
+    return (
+      <LandingScreen
+        setUserRole={setUserRole}
+        onEnterMap={() => setIsGuestMode(true)}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Header Bar */}
@@ -175,5 +187,6 @@ export default function App() {
     </div>
   );
 }
+
 
 
