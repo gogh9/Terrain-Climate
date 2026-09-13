@@ -612,32 +612,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           </button>
 
           <button
-            onClick={() => {
-              const target = activeSession || sessions[0];
-              onEnterMap?.(target);
-            }}
-            style={{
-              background: '#1f1f1f',
-              border: '1px solid #7c7c7c',
-              borderRadius: '9999px',
-              padding: '0.65rem 1.2rem',
-              color: '#ffffff',
-              cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s ease'
-            }}
-            title="선택된 회차의 학생 지형도 화면으로 이동"
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
-          >
-            🗺️ 지도 화면 이동 {activeSession ? `(${activeSession.title.match(/(\d+)회/)?.[0] || activeSession.title.split('(')[0]} · ${activeSession.categoryFilter === 'climate' ? '기후' : '지형'})` : ''}
-          </button>
-
-          <button
             onClick={handleCreateNewMap}
             style={{
               background: '#1ed760',

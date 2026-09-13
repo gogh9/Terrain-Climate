@@ -342,32 +342,6 @@ export default function LandingScreen({
               <span>세계 지형도 탐험 시작하기</span>
             </button>
 
-            {/* Switch to Teacher Login */}
-            <div style={{ marginTop: '0.6rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setStudentMode(false);
-                  if (setUserRole) setUserRole('teacher');
-                  localStorage.setItem('geo_user_role', 'teacher');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#9e9e9e',
-                  fontSize: '0.84rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: '6px 12px',
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#9e9e9e'}
-              >
-                👨‍🏫 교사이신가요? 교사 로그인으로 이동
-              </button>
-            </div>
           </form>
         ) : (
           /* Teacher Google Login Screen */
