@@ -87,8 +87,8 @@ export default function App() {
     }
   }, []);
 
-  // Determine active category filter
-  const activeCategoryFilter = urlCategory || currentSession?.categoryFilter || categoryFilter || 'all';
+  // Determine active category filter (currentSession has highest priority)
+  const activeCategoryFilter = currentSession?.categoryFilter || urlCategory || categoryFilter || 'all';
 
   // Filter locations based on active category filter ('all' | 'landform' | 'climate')
   const displayedLocations = useMemo(() => {
@@ -261,10 +261,22 @@ export default function App() {
       <TeacherWorkspace
         user={user}
         locations={LOCATION_DATA}
+        initialSessionId={currentSession?.id}
         onEnterMap={(session) => {
+          if (!session) return;
           setCurrentSession(session);
-          setUrlCategory(session.categoryFilter);
+          if (session.categoryFilter) {
+            setUrlCategory(session.categoryFilter);
+            setCategoryFilter(session.categoryFilter);
+          }
           setActiveView('map');
+          try {
+            const cat = session.categoryFilter === 'landform' ? 'landform' : 'climate';
+            const newUrl = `${window.location.pathname}?session=${session.id}&category=${cat}`;
+            window.history.replaceState(null, '', newUrl);
+          } catch (e) {
+            console.warn(e);
+          }
         }}
         onLogout={handleLogout}
       />
@@ -278,6 +290,7 @@ export default function App() {
         completedIds={completedIds}
         totalCount={displayedLocations.length}
         categoryFilter={activeCategoryFilter}
+        sessionTitle={currentSession?.title}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
         onOpenTeacherDashboard={() => {
           if (user) setActiveView('workspace');

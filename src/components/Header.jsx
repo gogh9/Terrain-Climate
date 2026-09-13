@@ -12,7 +12,8 @@ export default function Header({
   studentUser,
   onStudentLogout,
   onOpenLoginModal,
-  categoryFilter = 'all'
+  categoryFilter = 'all',
+  sessionTitle = null
 }) {
   const completedCount = completedIds.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
@@ -50,6 +51,22 @@ export default function Header({
               <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
                 6학년 사회 세계 지형·기후 탐험 (지형도)
               </h1>
+              {sessionTitle && (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    background: '#1f1f1f',
+                    color: '#1ed760',
+                    border: '1px solid #1ed760',
+                    padding: '2px 9px',
+                    borderRadius: '9999px',
+                    fontWeight: 800,
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  {sessionTitle.match(/(\d+)회/)?.[0] || sessionTitle.split('(')[0]}
+                </span>
+              )}
               <span
                 style={{
                   fontSize: '0.72rem',

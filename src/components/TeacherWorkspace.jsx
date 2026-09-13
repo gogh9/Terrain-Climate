@@ -121,7 +121,7 @@ export const getColumnsForSession = (session, subs = []) => {
   return [...defaultList, ...extraCols];
 };
 
-export default function TeacherWorkspace({ user, locations = [], onEnterMap, onLogout }) {
+export default function TeacherWorkspace({ user, locations = [], initialSessionId, onEnterMap, onLogout }) {
   // Saved sessions list (sorted so 1회 is on the left, newer sessions on the right)
   const [sessions, setSessions] = useState(() => {
     try {
@@ -154,11 +154,18 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     ];
   });
 
-  const [activeSessionId, setActiveSessionId] = useState('1');
+  const [activeSessionId, setActiveSessionId] = useState(() => initialSessionId ? String(initialSessionId) : '1');
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sync activeSessionId if initialSessionId prop updates
+  useEffect(() => {
+    if (initialSessionId) {
+      setActiveSessionId(String(initialSessionId));
+    }
+  }, [initialSessionId]);
 
   // Save sessions to LocalStorage
   useEffect(() => {
@@ -208,13 +215,16 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
   // Toggle Session Open/Closed Status
   const handleToggleOpen = (sessionId) => {
     sound.playClick();
-    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, isOpen: !s.isOpen } : s));
+    const strId = String(sessionId);
+    setSessions(prev => prev.map(s => String(s.id) === strId ? { ...s, isOpen: !s.isOpen } : s));
   };
 
   // Toggle Category Filter (Landform / Climate)
   const handleCategoryChange = (sessionId, category) => {
     sound.playClick();
-    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, categoryFilter: category } : s));
+    const strId = String(sessionId);
+    setActiveSessionId(strId);
+    setSessions(prev => prev.map(s => String(s.id) === strId ? { ...s, categoryFilter: category } : s));
   };
 
   // Copy Student Distribution Link
@@ -264,15 +274,16 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     }
     if (!window.confirm('이 지도를 삭제하시겠습니까?')) return;
     sound.playClick();
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    if (activeSessionId === sessionId) {
-      setActiveSessionId(sessions[0].id);
+    const strId = String(sessionId);
+    setSessions(prev => prev.filter(s => String(s.id) !== strId));
+    if (String(activeSessionId) === strId) {
+      setActiveSessionId(String(sessions[0].id));
     }
   };
 
   // Active Session helper
   const activeSession = useMemo(() => {
-    return sessions.find(s => s.id === activeSessionId) || sessions[0];
+    return sessions.find(s => String(s.id) === String(activeSessionId)) || sessions[0];
   }, [sessions, activeSessionId]);
 
   // Submissions filtered strictly for the Active Session
@@ -537,7 +548,10 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
           </button>
 
           <button
-            onClick={() => onEnterMap?.(sessions.find(s => s.id === activeSessionId) || sessions[0])}
+            onClick={() => {
+              const target = activeSession || sessions[0];
+              onEnterMap?.(target);
+            }}
             style={{
               background: '#1f1f1f',
               border: '1px solid #7c7c7c',
@@ -552,11 +566,11 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               gap: '6px',
               transition: 'all 0.15s ease'
             }}
-            title="학생 지형도 화면으로 이동"
+            title="선택된 회차의 학생 지형도 화면으로 이동"
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
           >
-            🗺️ 지도 화면 이동
+            🗺️ 지도 화면 이동 {activeSession ? `(${activeSession.title.match(/(\d+)회/)?.[0] || activeSession.title.split('(')[0]} · ${activeSession.categoryFilter === 'landform' ? '지형' : '기후'})` : ''}
           </button>
 
           <button
@@ -596,7 +610,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
         }}
       >
         {sessions.map(session => {
-          const isSelected = activeSessionId === session.id;
+          const isSelected = String(activeSessionId) === String(session.id);
           const sessionSubCount = submissions.filter(sub => {
             if (sub.session_id) return String(sub.session_id) === String(session.id);
             return String(session.id) === '1';
@@ -605,7 +619,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
           return (
             <div
               key={session.id}
-              onClick={() => setActiveSessionId(session.id)}
+              onClick={() => setActiveSessionId(String(session.id))}
               style={{
                 background: '#181818',
                 borderRadius: '12px',
@@ -710,8 +724,35 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   </select>
                 </div>
 
-                {/* Actions: Excel Export & Open/Close Toggle */}
+                {/* Actions: Direct Map View & Excel Export & Open/Close Toggle */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveSessionId(String(session.id));
+                      onEnterMap?.(session);
+                    }}
+                    style={{
+                      background: '#1f1f1f',
+                      color: '#ffffff',
+                      border: '1px solid #7c7c7c',
+                      padding: '6px 13px',
+                      borderRadius: '9999px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
+                    title={`이 회차(${session.title}) 지도로 바로 이동`}
+                  >
+                    🗺️ 지도 보기
+                  </button>
+
                   <button
                     onClick={(e) => { e.stopPropagation(); handleExportExcel(session); }}
                     style={{
