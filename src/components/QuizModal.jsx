@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, CheckCircle, HelpCircle, Eye, Sparkles, ArrowRight, ZoomIn } from 'lucide-react';
+import { X, Volume2, VolumeX, CheckCircle, HelpCircle, Eye, Sparkles, ArrowRight, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
 import { saveQuizSubmission } from '../utils/supabaseService';
@@ -28,8 +28,22 @@ export default function QuizModal({
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Single exact photo for this location
-  const currentImage = location.image;
+  // Multi-image list & current photo index
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageList = (location.images && location.images.length > 0) ? location.images : [location.image];
+  const currentImage = imageList[currentImageIndex] || imageList[0];
+
+  const handlePrevImage = (e) => {
+    e?.stopPropagation();
+    sound.playClick();
+    setCurrentImageIndex(prev => (prev === 0 ? imageList.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = (e) => {
+    e?.stopPropagation();
+    sound.playClick();
+    setCurrentImageIndex(prev => (prev === imageList.length - 1 ? 0 : prev + 1));
+  };
 
   // Toggle TTS
   const handleToggleSpeech = (text) => {
@@ -71,7 +85,7 @@ export default function QuizModal({
     sound.playClick();
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
-    // 1. Name Keywords Check (기후 or 지형 명칭 검사)
+    // 1. Name Keywords Check (지형 or 기후 명칭 검사)
     const nameKeywords = [
       ...(location.nameKeywords || []),
       ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
@@ -193,13 +207,99 @@ export default function QuizModal({
             <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#090d16', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <img
                 src={currentImage}
-                alt={location.name}
+                alt={`${location.name} - 사진 ${currentImageIndex + 1}`}
                 style={{ width: '100%', maxHeight: '420px', objectFit: 'contain', cursor: 'pointer' }}
                 onClick={() => setShowImageZoom(true)}
               />
+
+              {/* Photo Count Badge (if multiple images) */}
+              {imageList.length > 1 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    background: 'rgba(0, 0, 0, 0.78)',
+                    color: '#1ed760',
+                    border: '1px solid rgba(30, 215, 96, 0.45)',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.5px',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 2
+                  }}
+                >
+                  📷 사진 {currentImageIndex + 1} / {imageList.length}
+                </div>
+              )}
+
+              {/* Carousel Prev Button */}
+              {imageList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrevImage}
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.35)',
+                    color: '#ffffff',
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 3,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="이전 사진 보기"
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#1ed760'; e.currentTarget.style.color = '#000000'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.75)'; e.currentTarget.style.color = '#ffffff'; }}
+                >
+                  <ChevronLeft size={22} />
+                </button>
+              )}
+
+              {/* Carousel Next Button */}
+              {imageList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleNextImage}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.35)',
+                    color: '#ffffff',
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 3,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="다음 사진 보기"
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#1ed760'; e.currentTarget.style.color = '#000000'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 0, 0, 0.75)'; e.currentTarget.style.color = '#ffffff'; }}
+                >
+                  <ChevronRight size={22} />
+                </button>
+              )}
               
               {/* Zoom Button Overlay */}
               <button
+                type="button"
                 onClick={() => setShowImageZoom(true)}
                 style={{
                   position: 'absolute',
@@ -209,19 +309,48 @@ export default function QuizModal({
                   color: 'white',
                   border: '1px solid rgba(255, 255, 255, 0.25)',
                   borderRadius: '10px',
-                  padding: '8px 16px',
-                  fontSize: '0.9rem',
+                  padding: '6px 14px',
+                  fontSize: '0.82rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  backdropFilter: 'blur(6px)'
+                  backdropFilter: 'blur(6px)',
+                  zIndex: 2
                 }}
               >
-                <ZoomIn size={16} /> 원본 사진 확대보기
+                <ZoomIn size={15} /> 확대보기
               </button>
             </div>
+
+            {/* Thumbnail Navigation Row if Multiple Images */}
+            {imageList.length > 1 && (
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 0' }}>
+                {imageList.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => { sound.playClick(); setCurrentImageIndex(idx); }}
+                    style={{
+                      flex: 1,
+                      maxWidth: '90px',
+                      height: '56px',
+                      padding: 0,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: idx === currentImageIndex ? '2px solid #1ed760' : '1px solid rgba(255,255,255,0.2)',
+                      opacity: idx === currentImageIndex ? 1 : 0.6,
+                      cursor: 'pointer',
+                      background: 'none',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <img src={img} alt={`사진 ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right Column: Quiz / Exploration Tabs */}
@@ -273,7 +402,7 @@ export default function QuizModal({
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
-                {/* Input 1: Climate or Landform */}
+                {/* Input 1: Landform or Climate */}
                 <div>
                   <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
                     {location.category === 'climate' ? '이 지역에 나타나는 기후를 쓰시오:' : '이 지역에서 볼 수 있는 지형을 쓰시오:'}
@@ -442,7 +571,7 @@ export default function QuizModal({
               position: 'fixed',
               inset: 0,
               zIndex: 20000,
-              background: 'rgba(0,0,0,0.92)',
+              background: 'rgba(0,0,0,0.94)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -450,13 +579,89 @@ export default function QuizModal({
             }}
             onClick={() => setShowImageZoom(false)}
           >
-            <div style={{ position: 'relative', maxWidth: '95vw', maxHeight: '95vh' }}>
+            <div style={{ position: 'relative', maxWidth: '95vw', maxHeight: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
               <img
                 src={currentImage}
-                alt={location.name}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px' }}
+                alt={`${location.name} - 사진 ${currentImageIndex + 1}`}
+                style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px' }}
               />
+
+              {/* Photo Count Badge (if multiple) */}
+              {imageList.length > 1 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '16px',
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    color: '#1ed760',
+                    border: '1px solid rgba(30, 215, 96, 0.4)',
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    fontSize: '0.9rem',
+                    fontWeight: 800
+                  }}
+                >
+                  📷 사진 {currentImageIndex + 1} / {imageList.length}
+                </div>
+              )}
+
+              {/* Zoom Carousel Prev Button */}
+              {imageList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handlePrevImage}
+                  style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: '#ffffff',
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10
+                  }}
+                >
+                  <ChevronLeft size={28} />
+                </button>
+              )}
+
+              {/* Zoom Carousel Next Button */}
+              {imageList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleNextImage}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: '#ffffff',
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10
+                  }}
+                >
+                  <ChevronRight size={28} />
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={() => setShowImageZoom(false)}
                 style={{
                   position: 'absolute',
@@ -469,7 +674,8 @@ export default function QuizModal({
                   height: '36px',
                   borderRadius: '50%',
                   cursor: 'pointer',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  zIndex: 20
                 }}
               >
                 ✕

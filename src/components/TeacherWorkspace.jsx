@@ -5,14 +5,49 @@ import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
 
-// 기후 지점 표준 순서 (쉼표 구분으로 일관되게 정리)
+// 지형 지점 표준 순서 (총 21개 지점)
+export const LANDFORM_ORDER = [
+  '스위스 (알프스 산맥)',
+  '네팔 (히말라야 산맥)',
+  '칠레 (안데스 산맥)',
+  '페루 (안데스 산맥)',
+  '미국 하와이 (화산)',
+  '나이지리아 (고원)',
+  '브라질 (아마존강)',
+  '베트남 (메콩강)',
+  '타이 (짜오프라야강)',
+  '캐나다 (오타와강)',
+  '짐바브웨 (빅토리아 폭포)',
+  '네덜란드 (라인 운하)',
+  '페루 (티티카카호와)',
+  '노르웨이 (피오르)',
+  '오스트레일리아 (산호초와 암석 해안)',
+  '미국 (샌타모니카 모래 해안)',
+  '인도네시아 (발리섬 모래 해안)',
+  '중국 (상하이 항구)',
+  '이집트 (수에즈 운하)',
+  '칠레 (연안 양식장)',
+  '네덜란드 (바덴해와 갯벌)'
+];
+
+// 기후 지점 표준 순서 (총 16개 지점)
 export const CLIMATE_ORDER = [
-  '대한민국, 벼농사',
-  '러시아, 타이가',
-  '사우디아라비아, 사막',
-  '볼리비아, 안데스 산지',
-  '브라질, 아마존',
-  '그린란드, 툰드라'
+  '대한민국 (벼농사)',
+  '네덜란드 (화훼 농업)',
+  '영국 (밀농사·목축업)',
+  '러시아 (통나무집)',
+  '캐나다 (타이가 숲·임업)',
+  '몽골 (게르와 초원)',
+  '알제리 (사하라 사막)',
+  '모로코 (흙집)',
+  '사우디아라비아 (원형 경작지)',
+  '브라질 (아마존 밀림)',
+  '케냐 (사파리 초원)',
+  '캄보디아 (고상 가옥)',
+  '그린란드 (이누이트)',
+  '캐나다 (순록 유목·이글루와)',
+  '페루 (쿠스코)',
+  '멕시코 (고산 옥수수밭)'
 ];
 
 // 지점명 내 슬래시(/)를 쉼표(,)로 통일 정규화하는 헬퍼
@@ -20,16 +55,6 @@ export const normalizeTitle = (title) => {
   if (!title) return '';
   return String(title).replace(/\s*\/\s*/g, ', ').trim();
 };
-
-// 지형 지점 표준 순서
-export const LANDFORM_ORDER = [
-  '몽블랑산 (알프스산맥)',
-  '사하라 사막',
-  '몽골 초원',
-  '콜로라도강 (그랜드 캐니언)',
-  '피오르 해안 (노르웨이)',
-  '하와이 화산 (킬라우에아)'
-];
 
 // XML 특수문자 이스케이프 헬퍼
 export const escapeXml = (unsafe) => {
@@ -106,8 +131,8 @@ export const compareStudents = (rawA, rawB) => {
 
 // 세션 카테고리에 따른 지점 열 목록 계산 (기본 목록 + 추가 지점)
 export const getColumnsForSession = (session, subs = []) => {
-  const isLandform = session?.categoryFilter === 'landform';
-  const defaultList = isLandform ? LANDFORM_ORDER : CLIMATE_ORDER;
+  const isClimate = session?.categoryFilter === 'climate';
+  const defaultList = isClimate ? CLIMATE_ORDER : LANDFORM_ORDER;
 
   const extraCols = [];
   subs.forEach(s => {
@@ -166,7 +191,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       {
         id: '1',
         title: '1회(2026. 9. 12.)',
-        categoryFilter: 'climate', // 'climate' | 'landform'
+        categoryFilter: 'landform', // 'landform' | 'climate'
         continents: ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'],
         isOpen: true,
         accessCount: 0,
@@ -221,7 +246,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     const newSession = {
       id: newId,
       title: `(${dateStr})`,
-      categoryFilter: 'climate',
+      categoryFilter: 'landform',
       continents: [...ALL_CONTINENTS],
       isOpen: true,
       accessCount: 0,
@@ -250,7 +275,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   // Copy Student Distribution Link
   const handleCopyLink = (session) => {
     sound.playClick();
-    const cat = session.categoryFilter === 'landform' ? 'landform' : 'climate';
+    const cat = session.categoryFilter === 'climate' ? 'climate' : 'landform';
     const link = `${window.location.origin}/?session=${session.id}&category=${cat}`;
     navigator.clipboard.writeText(link);
     setCopiedId(session.id);
@@ -477,8 +502,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     if (found) return found;
     return {
       name: normTitle || '탐험 지점',
-      category: 'climate',
-      categoryName: '기후, 지형',
+      category: 'landform',
+      categoryName: '지형, 기후',
       continent: '전체',
       modelAnswer: '교과서 핵심 요약 내용이 제공되지 않는 지점입니다.'
     };
@@ -542,7 +567,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         }}
       >
         <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
-          우리반 세계지도(기후, 지형)
+          우리반 세계지도(지형, 기후)
         </h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -595,7 +620,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
           >
-            🗺️ 지도 화면 이동 {activeSession ? `(${activeSession.title.match(/(\d+)회/)?.[0] || activeSession.title.split('(')[0]} · ${activeSession.categoryFilter === 'landform' ? '지형' : '기후'})` : ''}
+            🗺️ 지도 화면 이동 {activeSession ? `(${activeSession.title.match(/(\d+)회/)?.[0] || activeSession.title.split('(')[0]} · ${activeSession.categoryFilter === 'climate' ? '기후' : '지형'})` : ''}
           </button>
 
           <button
@@ -730,7 +755,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#b3b3b3' }}>
                   <span style={{ fontWeight: 600 }}>학습 주제:</span>
                   <select
-                    value={session.categoryFilter === 'landform' ? 'landform' : 'climate'}
+                    value={session.categoryFilter === 'climate' ? 'climate' : 'landform'}
                     onChange={(e) => handleCategoryChange(session.id, e.target.value)}
                     style={{
                       background: '#1f1f1f',
@@ -744,8 +769,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       cursor: 'pointer'
                     }}
                   >
-                    <option value="climate">☀️ 기후</option>
                     <option value="landform">🏔️ 지형</option>
+                    <option value="climate">☀️ 기후</option>
                   </select>
                 </div>
 

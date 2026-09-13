@@ -9,6 +9,8 @@ export default function AchievementBadge({
   locations,
   onClose
 }) {
+  const totalLandform = locations.filter(l => l.category === 'landform').length;
+  const totalClimate = locations.filter(l => l.category === 'climate').length;
   const landformCompletedCount = locations.filter(l => l.category === 'landform' && completedIds.includes(l.id)).length;
   const climateCompletedCount = locations.filter(l => l.category === 'climate' && completedIds.includes(l.id)).length;
 
@@ -100,7 +102,7 @@ export default function AchievementBadge({
         {/* Level Banner */}
         <div style={{ marginTop: '1.5rem', background: 'rgba(2, 132, 199, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
           <span style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 700 }}>
-            ✨ 지형 탐험 달성도: {landformCompletedCount}/9 | 기후 탐험 달성도: {climateCompletedCount}/6
+            ✨ 지형 탐험 달성도: {landformCompletedCount}/{totalLandform} | 기후 탐험 달성도: {climateCompletedCount}/{totalClimate}
           </span>
         </div>
 

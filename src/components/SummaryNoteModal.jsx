@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Printer, CheckCircle2, Circle, RotateCcw } from 'lucide-react';
 import { sound } from '../utils/audio';
 
@@ -9,9 +9,18 @@ export default function SummaryNoteModal({
   onClose,
   onResetProgress
 }) {
+  const [cardImageIndex, setCardImageIndex] = useState({});
   const completedCount = completedIds.length;
   const totalCount = locations.length;
   const studentName = typeof window !== 'undefined' ? (localStorage.getItem('geo_student_name') || '') : '';
+
+  const handleCycleImage = (locId, totalImages) => {
+    sound.playClick();
+    setCardImageIndex(prev => ({
+      ...prev,
+      [locId]: ((prev[locId] || 0) + 1) % totalImages
+    }));
+  };
 
   const handlePrint = () => {
     sound.playClick();
@@ -136,12 +145,39 @@ export default function SummaryNoteModal({
 
                 {/* Content Details */}
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <img
-                    src={loc.image}
-                    alt={cleanTitle}
-                    className="summary-note-thumb"
-                    style={{ width: '100px', height: '70px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #282828' }}
-                  />
+                  <div
+                    style={{ position: 'relative', width: '100px', height: '70px', flexShrink: 0, cursor: (loc.images && loc.images.length > 1) ? 'pointer' : 'default' }}
+                    onClick={() => {
+                      if (loc.images && loc.images.length > 1) {
+                        handleCycleImage(loc.id, loc.images.length);
+                      }
+                    }}
+                    title={(loc.images && loc.images.length > 1) ? '클릭하여 다음 사진 보기' : cleanTitle}
+                  >
+                    <img
+                      src={(loc.images && loc.images.length > 0) ? (loc.images[cardImageIndex[loc.id] || 0] || loc.images[0]) : loc.image}
+                      alt={cleanTitle}
+                      className="summary-note-thumb"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px', border: '1px solid #282828' }}
+                    />
+                    {loc.images && loc.images.length > 1 && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: '3px',
+                          right: '3px',
+                          background: 'rgba(0,0,0,0.8)',
+                          color: '#1ed760',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        {(cardImageIndex[loc.id] || 0) + 1}/{loc.images.length}
+                      </span>
+                    )}
+                  </div>
                   <div className="summary-note-info" style={{ fontSize: '0.8rem', color: '#b3b3b3', flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     <div>📍 대륙: <strong style={{ color: '#ffffff' }}>{loc.continent}</strong></div>
                     <div>📚 출처: <strong style={{ color: '#1ed760' }}>{loc.pageRef}</strong></div>
