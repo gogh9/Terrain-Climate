@@ -15,6 +15,10 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
     sound.playClick();
     await signOutUser();
     localStorage.removeItem('geo_user_role');
+    localStorage.removeItem('geo_student_user');
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch (e) {}
     setUserRole('student');
     if (onClose) onClose();
   };

@@ -27,6 +27,13 @@ export default function App() {
   const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);
   const [urlCategory, setUrlCategory] = useState(null);
+  const [sessionParam, setSessionParam] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('session');
+    } catch {
+      return null;
+    }
+  });
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
@@ -66,6 +73,7 @@ export default function App() {
       const sessionId = params.get('session');
       const categoryParam = params.get('category');
       if (sessionId) {
+        setSessionParam(sessionId);
         setActiveView('map');
         const saved = localStorage.getItem('geo_map_sessions');
         if (saved) {
@@ -227,7 +235,19 @@ export default function App() {
     sound.playClick();
     await signOutUser();
     setUser(null);
+    setStudentUser(null);
+    setCurrentSession(null);
+    setSessionParam(null);
+    setUrlCategory(null);
+    setUserRole(null);
     setActiveView('workspace');
+    try {
+      localStorage.removeItem('geo_user_role');
+      localStorage.removeItem('geo_student_user');
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch (e) {
+      console.warn('Error clearing state on logout', e);
+    }
   };
 
   // Show loading indicator while parsing URL hash auth token
@@ -241,8 +261,7 @@ export default function App() {
   }
 
   // If neither teacher nor student is logged in, show Landing Screen
-  const params = new URLSearchParams(window.location.search);
-  const isStudentSession = Boolean(params.get('session'));
+  const isStudentSession = Boolean(sessionParam);
 
   if (!user && !studentUser) {
     return (
