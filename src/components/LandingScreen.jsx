@@ -333,33 +333,6 @@ export default function LandingScreen({
               <LogIn size={18} />
               <span>세계 지형도 탐험 시작하기</span>
             </button>
-
-            {/* Switch to Teacher Google Login */}
-            <div style={{ marginTop: '0.85rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setStudentMode(false);
-                  try {
-                    window.history.replaceState(null, '', window.location.pathname);
-                  } catch (e) {}
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#a1a1aa',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  transition: 'color 0.15s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1aa'; }}
-              >
-                선생님 구글 계정으로 로그인하기
-              </button>
-            </div>
           </form>
         ) : (
           /* Teacher Google Login Screen (Only shown when not on student session link) */
@@ -394,30 +367,6 @@ export default function LandingScreen({
             >
               GOOGLE 로그인
             </button>
-
-            {/* Switch to Student Login */}
-            <div style={{ marginTop: '0.4rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setStudentMode(true);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#a1a1aa',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  transition: 'color 0.15s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#a1a1aa'; }}
-              >
-                학생 참여 모드로 전환
-              </button>
-            </div>
           </div>
         )}
 
