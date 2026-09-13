@@ -115,11 +115,22 @@ export const getColumnsForSession = (session, subs = []) => {
 };
 
 export default function TeacherWorkspace({ user, locations = [], onEnterMap, onLogout }) {
-  // Saved sessions list
+  // Saved sessions list (sorted so 1회 is on the left, newer sessions on the right)
   const [sessions, setSessions] = useState(() => {
     try {
       const saved = localStorage.getItem('geo_map_sessions');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Sort ascending so 1회 is on the left, 2회, 3회... to the right
+          return parsed.sort((a, b) => {
+            const numA = parseInt((a.title || '').match(/(\d+)회/)?.[1] || '0', 10);
+            const numB = parseInt((b.title || '').match(/(\d+)회/)?.[1] || '0', 10);
+            if (numA && numB) return numA - numB;
+            return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+          });
+        }
+      }
     } catch (e) {
       console.warn('Session load error', e);
     }
@@ -165,7 +176,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     return () => clearInterval(interval);
   }, []);
 
-  // Create New Map Session
+  // Create New Map Session (새 지도는 오른쪽에 추가)
   const handleCreateNewMap = () => {
     sound.playClick();
     const newId = String(Date.now());
@@ -183,7 +194,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       createdAt: now.toISOString()
     };
 
-    setSessions(prev => [newSession, ...prev]);
+    setSessions(prev => [...prev, newSession]);
     setActiveSessionId(newId);
   };
 
