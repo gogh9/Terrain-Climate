@@ -21,14 +21,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
-  const [studentUser, setStudentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('geo_student_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // Student user starts as null on fresh link entry so the login screen is always presented
+  const [studentUser, setStudentUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);

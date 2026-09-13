@@ -10,9 +10,24 @@ export default function LandingScreen({
   setUserRole
 }) {
   const [studentMode, setStudentMode] = useState(isStudentSession);
-  const [studentClass, setStudentClass] = useState('');
-  const [studentNumber, setStudentNumber] = useState('');
-  const [studentName, setStudentName] = useState('');
+  const [studentClass, setStudentClass] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_student_user');
+      return saved ? JSON.parse(saved).studentClass || '' : '';
+    } catch { return ''; }
+  });
+  const [studentNumber, setStudentNumber] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_student_user');
+      return saved ? JSON.parse(saved).number || '' : '';
+    } catch { return ''; }
+  });
+  const [studentName, setStudentName] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_student_user');
+      return saved ? JSON.parse(saved).name || '' : '';
+    } catch { return ''; }
+  });
 
   const handleGoogleLogin = async () => {
     sound.playClick();
