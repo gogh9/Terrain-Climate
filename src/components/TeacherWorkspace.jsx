@@ -773,38 +773,37 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
             </div>
           </div>
         ) : (
-          /* HORIZONTAL MATRIX VIEW (엑셀 시트처럼 가로로 길게 한 줄 정렬) */
-          <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #282828', background: '#181818', boxShadow: 'rgba(0, 0, 0, 0.35) 0px 8px 16px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem', minWidth: `${300 + activeColumns.length * 260}px` }}>
+          /* HORIZONTAL MATRIX VIEW (창 너비에 맞춰 가로 스크롤 없이 전체 표시) */
+          <div style={{ borderRadius: '12px', border: '1px solid #282828', background: '#181818', boxShadow: 'rgba(0, 0, 0, 0.35) 0px 8px 16px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ background: '#1f1f1f', borderBottom: '2px solid #2d2d2d', color: '#1ed760' }}>
-                  <th style={{ padding: '12px 10px', width: '55px', textAlign: 'center', position: 'sticky', left: 0, background: '#1f1f1f', zIndex: 2 }}>반</th>
-                  <th style={{ padding: '12px 10px', width: '55px', textAlign: 'center', position: 'sticky', left: '55px', background: '#1f1f1f', zIndex: 2 }}>번호</th>
-                  <th style={{ padding: '12px 14px', width: '100px', textAlign: 'center', position: 'sticky', left: '110px', background: '#1f1f1f', zIndex: 2, borderRight: '2px solid #2d2d2d' }}>이름</th>
+                  <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center' }}>반</th>
+                  <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center' }}>번호</th>
+                  <th style={{ padding: '10px 4px', width: '70px', textAlign: 'center', borderRight: '2px solid #2d2d2d' }}>이름</th>
                   {activeColumns.map(col => {
                     const isLand = activeSession?.categoryFilter === 'landform' || LANDFORM_ORDER.includes(col);
                     return (
                       <th
                         key={col}
                         style={{
-                          padding: '12px 16px',
-                          width: '260px',
-                          minWidth: '240px',
+                          padding: '10px 6px',
                           textAlign: 'center',
                           fontWeight: 800,
                           color: '#ffffff',
-                          borderRight: '1px solid #282828'
+                          borderRight: '1px solid #282828',
+                          lineHeight: 1.25
                         }}
                       >
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                          <span>{isLand ? '🏔️' : '☀️'}</span>
-                          <span style={{ color: '#1ed760' }}>{col}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.85rem' }}>{isLand ? '🏔️' : '☀️'}</span>
+                          <span style={{ color: '#1ed760', fontSize: '0.8rem', wordBreak: 'keep-all' }}>{col}</span>
                         </div>
                       </th>
                     );
                   })}
-                  <th style={{ padding: '12px 14px', width: '90px', textAlign: 'center', borderRight: '1px solid #282828', color: '#b3b3b3' }}>제출 현황</th>
-                  <th style={{ padding: '12px 10px', width: '60px', textAlign: 'center', color: '#b3b3b3' }}>삭제</th>
+                  <th style={{ padding: '10px 4px', width: '65px', textAlign: 'center', borderRight: '1px solid #282828', color: '#b3b3b3', fontSize: '0.78rem' }}>현황</th>
+                  <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center', color: '#b3b3b3', fontSize: '0.78rem' }}>삭제</th>
                 </tr>
               </thead>
               <tbody>
@@ -819,57 +818,47 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                       key={studentName}
                       style={{
                         borderBottom: '1px solid #262626',
-                        background: idx % 2 === 0 ? '#181818' : '#151515',
+                        background: idx % 2 === 0 ? '#181818' : '#141414',
                         transition: 'background 0.15s ease'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#202020'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#181818' : '#151515'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#181818' : '#141414'}
                     >
-                      {/* 반 (가운데 정렬) */}
+                      {/* 반 (컴팩트 가운데 정렬) */}
                       <td style={{
-                        padding: '12px 8px',
+                        padding: '8px 2px',
                         textAlign: 'center',
-                        position: 'sticky',
-                        left: 0,
-                        background: 'inherit',
                         fontWeight: 700,
-                        color: '#e4e4e7',
-                        zIndex: 1
+                        color: '#e4e4e7'
                       }}>
                         {parsed.classNum ? (
-                          <span style={{ background: '#27272a', padding: '3px 8px', borderRadius: '6px', fontSize: '0.82rem' }}>
+                          <span style={{ background: '#27272a', padding: '2px 5px', borderRadius: '4px', fontSize: '0.78rem' }}>
                             {parsed.classNum}
                           </span>
                         ) : '-'}
                       </td>
 
-                      {/* 번호 (가운데 정렬) */}
+                      {/* 번호 (컴팩트 가운데 정렬) */}
                       <td style={{
-                        padding: '12px 8px',
+                        padding: '8px 2px',
                         textAlign: 'center',
-                        position: 'sticky',
-                        left: '55px',
-                        background: 'inherit',
                         fontWeight: 800,
                         color: '#ffffff',
-                        zIndex: 1,
-                        fontSize: '0.88rem'
+                        fontSize: '0.82rem'
                       }}>
                         {parsed.studentNum ? `${parsed.studentNum}` : '-'}
                       </td>
 
-                      {/* 이름 (가운데 정렬) */}
+                      {/* 이름 (컴팩트 가운데 정렬) */}
                       <td style={{
-                        padding: '12px 10px',
+                        padding: '8px 4px',
                         textAlign: 'center',
-                        position: 'sticky',
-                        left: '110px',
-                        background: 'inherit',
                         fontWeight: 900,
                         color: '#1ed760',
                         borderRight: '2px solid #2d2d2d',
-                        zIndex: 1,
-                        fontSize: '0.9rem',
+                        fontSize: '0.84rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
                         {parsed.name}
@@ -883,14 +872,14 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                             <td
                               key={col}
                               style={{
-                                padding: '12px 14px',
+                                padding: '8px 4px',
                                 textAlign: 'center',
-                                color: '#52525b',
+                                color: '#404040',
                                 borderRight: '1px solid #242424',
                                 verticalAlign: 'middle'
                               }}
                             >
-                              <span style={{ fontSize: '0.85rem' }}>-</span>
+                              <span style={{ fontSize: '0.8rem' }}>-</span>
                             </td>
                           );
                         }
@@ -899,7 +888,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                           <td
                             key={col}
                             style={{
-                              padding: '10px 12px',
+                              padding: '6px 5px',
                               borderRight: '1px solid #242424',
                               verticalAlign: 'top'
                             }}
@@ -908,43 +897,47 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                               onClick={() => setSelectedSubmission(sub)}
                               style={{
                                 background: '#121212',
-                                border: '1px solid #2f2f2f',
-                                borderRadius: '8px',
-                                padding: '8px 10px',
+                                border: '1px solid #2a2a2a',
+                                borderRadius: '6px',
+                                padding: '6px 8px',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
+                                minHeight: '52px',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '6px'
+                                justifyContent: 'space-between'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.borderColor = '#1ed760';
                                 e.currentTarget.style.background = '#1a1a1a';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#2f2f2f';
+                                e.currentTarget.style.borderColor = '#2a2a2a';
                                 e.currentTarget.style.background = '#121212';
                               }}
-                              title="클릭하여 모범 답안 비교 및 상세 확인"
+                              title={sub.answer_feature || '(작성 내용 없음)'}
                             >
                               <div style={{
-                                fontSize: '0.84rem',
+                                fontSize: '0.78rem',
                                 color: '#f4f4f5',
-                                lineHeight: 1.55,
+                                lineHeight: 1.4,
                                 wordBreak: 'break-word',
-                                whiteSpace: 'pre-wrap'
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
                               }}>
                                 {sub.answer_feature || '(작성 내용 없음)'}
                               </div>
 
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                                <span style={{ fontSize: '0.68rem', color: '#71717a' }}>
-                                  {sub.created_at ? new Date(sub.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                </span>
-                                <span style={{ fontSize: '0.7rem', color: '#1ed760', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                  <Eye size={11} /> 모범답안
-                                </span>
-                              </div>
+                              {sub.created_at && (
+                                <div style={{ textAlign: 'right', marginTop: '3px' }}>
+                                  <span style={{ fontSize: '0.64rem', color: '#71717a' }}>
+                                    {new Date(sub.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </td>
                         );
@@ -952,7 +945,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
 
                       {/* 제출 현황 (가운데 정렬) */}
                       <td style={{
-                        padding: '12px 8px',
+                        padding: '8px 2px',
                         textAlign: 'center',
                         borderRight: '1px solid #282828',
                         verticalAlign: 'middle'
@@ -962,19 +955,19 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                           background: isFull ? 'rgba(30, 215, 96, 0.15)' : 'rgba(255, 164, 43, 0.12)',
                           color: isFull ? '#1ed760' : '#ffa42b',
                           border: `1px solid ${isFull ? 'rgba(30, 215, 96, 0.3)' : 'rgba(255, 164, 43, 0.3)'}`,
-                          padding: '3px 9px',
+                          padding: '2px 5px',
                           borderRadius: '9999px',
-                          fontSize: '0.76rem',
+                          fontSize: '0.72rem',
                           fontWeight: 800,
                           whiteSpace: 'nowrap'
                         }}>
-                          {submittedCount} / {activeColumns.length}
+                          {submittedCount}/{activeColumns.length}
                         </span>
                       </td>
 
                       {/* 학생 제출 전체 삭제 (가운데 정렬) */}
                       <td style={{
-                        padding: '12px 6px',
+                        padding: '8px 2px',
                         textAlign: 'center',
                         verticalAlign: 'middle'
                       }}>
@@ -989,10 +982,10 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                             }
                             loadSubmissions();
                           }}
-                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '4px', opacity: 0.7 }}
+                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
                           title="해당 학생의 모든 제출 기록 삭제"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       </td>
                     </tr>
