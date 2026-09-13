@@ -138,8 +138,6 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
 
   const [activeSessionId, setActiveSessionId] = useState('1');
   const [submissions, setSubmissions] = useState([]);
-  const [studentFilter, setStudentFilter] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -406,41 +404,10 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     return Object.keys(submissionsByStudent).sort(compareStudents);
   }, [submissionsByStudent]);
 
-  // Filtered Submissions based on search query and student filter
-  const filteredSubmissions = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return submissions.filter(sub => {
-      const matchSearch = !q ||
-        (sub.student_name && sub.student_name.toLowerCase().includes(q)) ||
-        (sub.location_title && sub.location_title.toLowerCase().includes(q)) ||
-        (sub.answer_name && sub.answer_name.toLowerCase().includes(q)) ||
-        (sub.answer_feature && sub.answer_feature.toLowerCase().includes(q));
-
-      const matchStudent = studentFilter === 'ALL' || sub.student_name === studentFilter;
-
-      return matchSearch && matchStudent;
-    });
-  }, [submissions, searchQuery, studentFilter]);
-
-  // Filtered Submissions Grouped By Student
-  const filteredSubmissionsByStudent = useMemo(() => {
-    const groups = {};
-    filteredSubmissions.forEach(sub => {
-      const name = sub.student_name || '익명 학생';
-      if (!groups[name]) groups[name] = [];
-      groups[name].push(sub);
-    });
-    return groups;
-  }, [filteredSubmissions]);
-
-  const filteredStudentNames = useMemo(() => {
-    return Object.keys(filteredSubmissionsByStudent).sort(compareStudents);
-  }, [filteredSubmissionsByStudent]);
-
   // Student Matrix Map: { [studentName]: { [locationTitle]: submission } }
   const studentMatrixMap = useMemo(() => {
     const map = {};
-    filteredSubmissions.forEach(sub => {
+    submissions.forEach(sub => {
       const raw = sub.student_name || '익명 학생';
       if (!map[raw]) map[raw] = {};
       const title = sub.location_title || sub.answer_name;
@@ -449,7 +416,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       }
     });
     return map;
-  }, [filteredSubmissions]);
+  }, [submissions]);
 
   // Sorted Student Names for Matrix View
   const sortedMatrixStudentNames = useMemo(() => {
@@ -795,62 +762,14 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
           </div>
         </div>
 
-        {/* Filter Bar: Search Input & Student Filter */}
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search */}
-          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
-            <input
-              type="text"
-              placeholder="학생 이름, 탐험 지점명, 작성 내용으로 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="spotify-input"
-              style={{
-                width: '100%',
-                paddingLeft: '38px',
-                fontSize: '0.85rem',
-                background: '#181818',
-                border: '1px solid #282828',
-                color: '#ffffff',
-                borderRadius: '9999px'
-              }}
-            />
-          </div>
 
-          {/* Student Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.82rem', color: '#b3b3b3', fontWeight: 600 }}>학생 필터:</span>
-            <select
-              value={studentFilter}
-              onChange={(e) => setStudentFilter(e.target.value)}
-              style={{
-                background: '#181818',
-                color: '#ffffff',
-                border: '1px solid #333333',
-                borderRadius: '9999px',
-                padding: '6px 14px',
-                fontSize: '0.82rem',
-                outline: 'none',
-                fontWeight: 700
-              }}
-            >
-              <option value="ALL">전체 학생 ({studentNames.length}명)</option>
-              {studentNames.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
 
-        {/* Content Body: Empty State or Horizontal Matrix or Cards or Table */}
-        {filteredSubmissions.length === 0 ? (
+        {/* Content Body: Empty State or Horizontal Matrix */}
+        {submissions.length === 0 ? (
           <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#71717a', background: '#181818', borderRadius: '16px', border: '1px solid #282828' }}>
             <FileText size={32} style={{ margin: '0 auto 10px auto', display: 'block', opacity: 0.5 }} />
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#b3b3b3' }}>
-              {submissions.length === 0
-                ? '아직 제출된 학생 학습 기록이 없습니다. 학생들이 지도를 탐험하며 작성하면 여기에 실시간으로 표시됩니다.'
-                : '검색 및 필터 조건에 일치하는 학생 제출 기록이 없습니다.'}
+              아직 제출된 학생 학습 기록이 없습니다. 학생들이 지도를 탐험하며 작성하면 여기에 실시간으로 표시됩니다.
             </div>
           </div>
         ) : (
