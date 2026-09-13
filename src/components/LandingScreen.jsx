@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
-import { LogIn, Sparkles, User, Hash } from 'lucide-react';
+import { LogIn, Sparkles, User, Hash, School } from 'lucide-react';
 
 export default function LandingScreen({
   isStudentSession = false,
@@ -10,6 +10,7 @@ export default function LandingScreen({
   setUserRole
 }) {
   const [studentMode, setStudentMode] = useState(isStudentSession);
+  const [studentClass, setStudentClass] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
   const [studentName, setStudentName] = useState('');
 
@@ -22,11 +23,16 @@ export default function LandingScreen({
 
   const handleStudentSubmit = (e) => {
     e.preventDefault();
+    const cleanClass = studentClass.trim();
     const cleanNum = studentNumber.trim();
     const cleanName = studentName.trim();
 
+    if (!cleanClass) {
+      alert('반을 입력해 주세요! (예: 1)');
+      return;
+    }
     if (!cleanNum) {
-      alert('출석 번호를 입력해 주세요! (예: 5)');
+      alert('출석 번호를 입력해 주세요! (예: 7)');
       return;
     }
     if (!cleanName) {
@@ -37,6 +43,7 @@ export default function LandingScreen({
     sound.playSuccess();
     if (onStudentLogin) {
       onStudentLogin({
+        studentClass: cleanClass,
         number: cleanNum,
         name: cleanName
       });
@@ -59,7 +66,7 @@ export default function LandingScreen({
       <div
         style={{
           padding: '3.2rem 2.5rem',
-          maxWidth: '520px',
+          maxWidth: '540px',
           width: '100%',
           borderRadius: '16px',
           background: '#181818',
@@ -95,7 +102,7 @@ export default function LandingScreen({
           style={{
             fontSize: '1rem',
             color: '#b3b3b3',
-            margin: '0 0 2rem 0',
+            margin: '0 0 1.8rem 0',
             fontWeight: 400,
             lineHeight: 1.6,
             wordBreak: 'keep-all'
@@ -126,8 +133,8 @@ export default function LandingScreen({
           </div>
         )}
 
-        {studentMode ? (
-          /* Student Number & Name Login Form */
+        {isStudentSession || studentMode ? (
+          /* Student Class, Number & Name Login Form */
           <form
             onSubmit={handleStudentSubmit}
             style={{
@@ -137,7 +144,55 @@ export default function LandingScreen({
               gap: '1.1rem'
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', textAlign: 'left' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: '0.75rem', textAlign: 'left' }}>
+              {/* Class Input */}
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.8rem',
+                    color: '#b3b3b3',
+                    marginBottom: '6px',
+                    fontWeight: 600
+                  }}
+                >
+                  <School size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+                  반
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="99"
+                  placeholder="예: 1"
+                  value={studentClass}
+                  onChange={(e) => setStudentClass(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 0.75rem',
+                    background: '#242424',
+                    border: '1px solid #3e3e3e',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    textAlign: 'center',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#1ed760';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(30, 215, 96, 0.3)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#3e3e3e';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              {/* Number Input */}
               <div>
                 <label
                   style={{
@@ -158,10 +213,9 @@ export default function LandingScreen({
                   placeholder="예: 7"
                   value={studentNumber}
                   onChange={(e) => setStudentNumber(e.target.value)}
-                  autoFocus
                   style={{
                     width: '100%',
-                    padding: '0.85rem 1rem',
+                    padding: '0.85rem 0.75rem',
                     background: '#242424',
                     border: '1px solid #3e3e3e',
                     borderRadius: '10px',
@@ -170,6 +224,7 @@ export default function LandingScreen({
                     fontWeight: 700,
                     outline: 'none',
                     boxSizing: 'border-box',
+                    textAlign: 'center',
                     transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
                   }}
                   onFocus={(e) => {
@@ -183,6 +238,7 @@ export default function LandingScreen({
                 />
               </div>
 
+              {/* Name Input */}
               <div>
                 <label
                   style={{
@@ -258,30 +314,9 @@ export default function LandingScreen({
               <LogIn size={18} />
               <span>백지도 탐험 시작하기</span>
             </button>
-
-            {/* Switch to Teacher Google Login */}
-            <div style={{ marginTop: '0.6rem' }}>
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#8e8e8e',
-                  fontSize: '0.83rem',
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#8e8e8e')}
-              >
-                교사이신가요? 구글 계정으로 로그인
-              </button>
-            </div>
           </form>
         ) : (
-          /* Teacher Google Login Screen */
+          /* Teacher Google Login Screen (Only shown when not on student session link) */
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <button
               onClick={handleGoogleLogin}
@@ -334,7 +369,7 @@ export default function LandingScreen({
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#8e8e8e')}
               >
-                🎒 학생이신가요? 번호·이름으로 시작하기
+                🎒 학생이신가요? 반·번호·이름으로 시작하기
               </button>
             </div>
           </div>

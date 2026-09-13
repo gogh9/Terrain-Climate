@@ -158,10 +158,10 @@ export default function App() {
     }));
   };
 
-  // Student Login Handler
-  const handleStudentLogin = ({ number, name }) => {
-    const fullName = `${number}번 ${name}`;
-    const info = { number, name, fullName };
+  // Student Login Handler (반, 번호, 이름)
+  const handleStudentLogin = ({ studentClass, number, name }) => {
+    const fullName = `${studentClass}반 ${number}번 ${name}`;
+    const info = { studentClass, number, name, fullName };
     setStudentUser(info);
     setUserRole('student');
     try {
