@@ -46,40 +46,7 @@ export const LOCATION_DATA = [
     modelAnswer: '세계에서 가장 높은 히말라야산맥이 있는 산지로, 주변에서 구하기 쉬운 돌로 집을 짓고 등산객을 안내하는 셰르파 활동이 발달했습니다.',
     hint: '세계에서 가장 높은 산맥이 솟아 있으며, 돌집을 짓고 셰르파가 등산객을 안내하는 지형이에요.'
   },
-  {
-    id: 'landform_chile_andes_mine',
-    name: '칠레 (안데스 산맥)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '산지',
-    continent: '남아메리카',
-    lat: -22.3,
-    lng: -68.9,
-    pageRef: '교과서 13쪽',
-    image: '/교과서 이미지/지형/산지_안데스_구리광산(칠레).jpg',
-    images: ['/교과서 이미지/지형/산지_안데스_구리광산(칠레).jpg'],
-    nameKeywords: ['산지', '산맥', '안데스', '산'],
-    featureKeywords: ['구리', '광산', '광업', '자원', '해발', '고도'],
-    modelAnswer: '해발 고도가 높은 안데스산맥에 위치하여 구리 매장량이 풍부해 자원을 캐내는 광업이 크게 발달했습니다.',
-    hint: '높은 산지 지역에서 석탄, 구리 등 풍부한 지하자원을 캐내는 산업이 발달한 곳이에요.'
-  },
-  {
-    id: 'landform_peru_andes_llama',
-    name: '페루 (안데스 산맥)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '산지',
-    continent: '남아메리카',
-    lat: -13.1631,
-    lng: -72.5450,
-    pageRef: '교과서 13쪽',
-    image: '/교과서 이미지/지형/산지_안데스_목축업(페루).jpg',
-    images: ['/교과서 이미지/지형/산지_안데스_목축업(페루).jpg'],
-    nameKeywords: ['산지', '산맥', '안데스', '산'],
-    featureKeywords: ['야마', '알파카', '목축업', '가축', '경사', '비탈', '털', '짐'],
-    modelAnswer: '해발 고도가 높고 경사가 급한 산지 지역으로, 좁은 산길에서 짐을 나르고 털과 고기를 제공해 주는 야마와 알파카를 기르는 목축업이 발달했습니다.',
-    hint: '해발 고도가 높은 산지에서 야마와 알파카를 기르는 생활 모습이 나타나요.'
-  },
+
   {
     id: 'landform_usa_hawaii_volcano',
     name: '미국 하와이 (화산)',
@@ -331,74 +298,7 @@ export const LOCATION_DATA = [
     modelAnswer: '아름다운 모래 해변과 맑은 바다가 어우러진 해안 지역으로, 서핑을 하거나 스노클링을 통해 산호초와 열대 물고기를 관찰하는 관광 산업이 크게 발달했습니다.',
     hint: '아름다운 해변에서 서핑과 스노클링 강사 등 관광 산업이 발달한 지형이에요.'
   },
-  {
-    id: 'landform_china_shanghai_port',
-    name: '중국 (상하이 항구)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '해안',
-    continent: '아시아',
-    lat: 31.2304,
-    lng: 121.4737,
-    pageRef: '교과서 22쪽',
-    image: '/교과서 이미지/지형/해안_항구(중국).jpg',
-    images: ['/교과서 이미지/지형/해안_항구(중국).jpg'],
-    nameKeywords: ['해안', '항구'],
-    featureKeywords: ['무역', '수출', '수입', '공업', '배', '상하이'],
-    modelAnswer: '바다와 육지가 만나는 해안 지역에 대규모 항구와 산업 시설을 건설하여 원료를 수입하고 제품을 수출하는 국제 무역의 중심지로 성장했습니다.',
-    hint: '원료를 수입하고 제품을 수출하기 편리하여 큰 무역 도시로 성장한 해안 시설 지형이에요.'
-  },
-  {
-    id: 'landform_egypt_suez_canal',
-    name: '이집트 (수에즈 운하)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '해안',
-    continent: '아프리카',
-    lat: 30.5852,
-    lng: 32.2654,
-    pageRef: '교과서 22쪽',
-    image: '/교과서 이미지/지형/해안_수에즈 운하.jpg',
-    images: ['/교과서 이미지/지형/해안_수에즈 운하.jpg'],
-    nameKeywords: ['해안', '운하'],
-    featureKeywords: ['지중해', '홍해', '물길', '무역', '배', '교통로', '연결'],
-    modelAnswer: '지중해와 홍해, 인도양을 연결하는 인공 물길을 만들어 아시아와 유럽 간의 항해 거리를 획기적으로 줄인 해상 교통의 요충지입니다.',
-    hint: '지중해와 홍해를 연결하여 배들이 지나갈 수 있게 만든 해상 교통로 지형이에요.'
-  },
-  {
-    id: 'landform_chile_aquaculture',
-    name: '칠레 (연안 양식장)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '해안',
-    continent: '남아메리카',
-    lat: -41.4693,
-    lng: -72.9424,
-    pageRef: '교과서 22쪽',
-    image: '/교과서 이미지/지형/해안_양식업(칠레).jpg',
-    images: ['/교과서 이미지/지형/해안_양식업(칠레).jpg'],
-    nameKeywords: ['해안', '바다'],
-    featureKeywords: ['양식', '연어', '어업', '물고기', '바다'],
-    modelAnswer: '길게 뻗은 해안선과 풍부한 바다 환경을 활용하여 물고기를 직접 잡는 어업뿐만 아니라 연어 등을 기르는 양식업이 크게 발달했습니다.',
-    hint: '바다에서 물고기를 잡거나 연어를 길러 생활하는 해안의 생활 모습이에요.'
-  },
-  {
-    id: 'landform_netherlands_tidal_flat',
-    name: '네덜란드 (바덴해와 갯벌)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '해안',
-    continent: '유럽',
-    lat: 53.25,
-    lng: 6.25,
-    pageRef: '교과서 20쪽',
-    image: '/교과서 이미지/지형/해안_갯벌 해안(네덜란드).jpg',
-    images: ['/교과서 이미지/지형/해안_갯벌 해안(네덜란드).jpg'],
-    nameKeywords: ['해안', '갯벌', '갯벌 해안', '갯벌해안'],
-    featureKeywords: ['밀물', '썰물', '모래', '점토', '평탄', '바덴해'],
-    modelAnswer: '밀물과 썰물의 차이가 커서 밀물 때는 물에 잠기고 썰물 때는 모래나 점토로 덮인 넓고 평탄한 땅이 드러나는 갯벌 해안입니다.',
-    hint: '밀물과 썰물의 차이로 생기며 조개 등을 캘 수 있는 진흙/모래 지형이에요.'
-  },
+
 
   // ==========================================
   // --- 기후 (Climates - 총 16개 지점) ---
@@ -711,7 +611,7 @@ export const CONTINENTS = [
 
 export const BADGES = [
   { id: 'novice', title: '지리 탐험 입문자', icon: '🗺️', reqCount: 1, desc: '첫 번째 지점 학습 완료!' },
-  { id: 'landform_expert', title: '세계 지형 전문가', icon: '🏔️', reqCount: 10, category: 'landform', desc: '지형 지점 10개 학습 완료!' },
+  { id: 'landform_expert', title: '세계 지형 전문가', icon: '🏔️', reqCount: 8, category: 'landform', desc: '지형 지점 8개 학습 완료!' },
   { id: 'climate_master', title: '세계 기후 마스터', icon: '☀️', reqCount: 8, category: 'climate', desc: '기후 지점 8개 학습 완료!' },
-  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 30, desc: '모든 지형과 기후 지명 완벽 정복!' }
+  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 25, desc: '모든 지형과 기후 지명 완벽 정복!' }
 ];
