@@ -402,33 +402,6 @@ export default function LandingScreen({
             >
               GOOGLE 로그인
             </button>
-
-            {/* Switch to Student Mode */}
-            <div style={{ marginTop: '0.4rem', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.playClick();
-                  setStudentMode(true);
-                  if (setUserRole) setUserRole('student');
-                  localStorage.setItem('geo_user_role', 'student');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#9e9e9e',
-                  fontSize: '0.84rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: '6px 12px',
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#9e9e9e'}
-              >
-                🎒 학생이신가요? 학생 참여 화면으로 이동
-              </button>
-            </div>
           </div>
         )}
 

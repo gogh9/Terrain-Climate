@@ -49,7 +49,7 @@ export default function Header({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                6학년 사회 세계 지형·기후 탐험 (지형도)
+                6학년 사회 세계 지형·기후 탐험 {categoryFilter === 'climate' ? '(기후도)' : '(지형도)'}
               </h1>
               {sessionTitle && (
                 <span
@@ -80,11 +80,11 @@ export default function Header({
                   letterSpacing: '0.8px'
                 }}
               >
-                {categoryFilter === 'landform' ? '🏔️ 지형만 보기' : categoryFilter === 'climate' ? '☀️ 기후만 보기' : '🗺️ 지형&기후 전체'}
+                {categoryFilter === 'landform' ? '🏔️ 지형' : categoryFilter === 'climate' ? '☀️ 기후' : '🗺️ 지형&기후 전체'}
               </span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#b3b3b3', marginTop: '2px' }}>
-              세계 지형도의 지점을 클릭하여 해당 지역의 지형과 기후 특징을 확인하고 학습해 보세요.
+              세계 {categoryFilter === 'climate' ? '기후도' : '지형도'}의 지점을 클릭하여 해당 지역의 {categoryFilter === 'climate' ? '기후' : categoryFilter === 'landform' ? '지형' : '지형과 기후'} 특징을 확인하고 학습해 보세요.
             </p>
           </div>
         </div>
