@@ -488,9 +488,6 @@ export default function WorldMapSVG({
           <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'white', marginTop: '2px' }}>
             {hoveredLocation.name}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#b3b3b3', marginTop: '3px' }}>
-            클릭하여 지형/기후 확인 📝
-          </div>
         </div>
       ) : (hoveredCountryData && (
         <div
