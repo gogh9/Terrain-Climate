@@ -340,23 +340,7 @@ export const LOCATION_DATA = [
     modelAnswer: '여름이 서늘하고 겨울이 비교적 따뜻하며 일 년 내내 비가 고르게 내리는 온대 기후로, 영국에서는 밀 농사와 목축업이 발달하고 네덜란드에서는 튤립 등 꽃을 기르는 화훼 농업이 발달했습니다.',
     hint: '일 년 내내 날씨가 온화하고 비가 고르게 내려 밀 농사와 가축 사육, 아름다운 꽃을 재배하는 기후예요.'
   },
-  {
-    id: 'climate_russia_boreal',
-    name: '러시아 (통나무집)',
-    category: 'climate',
-    categoryName: '기후',
-    subType: '냉대 기후',
-    continent: '유럽',
-    lat: 60.0,
-    lng: 90.0,
-    pageRef: '교과서 42~43쪽',
-    image: '/교과서 이미지/기후/냉대_통나무집(러시아).jpg',
-    images: ['/교과서 이미지/기후/냉대_통나무집(러시아).jpg'],
-    nameKeywords: ['냉대', '냉대 기후', '냉대기후'],
-    featureKeywords: ['침엽수', '타이가', '통나무집', '겨울', '춥고 길', '나무'],
-    modelAnswer: '겨울이 길고 몹시 추운 기후로, 주변에 울창한 침엽수림(타이가)의 나무를 베어 따뜻한 통나무집을 짓고 생활합니다.',
-    hint: '겨울이 길고 추우며 바늘잎 침엽수로 통나무집을 짓는 기후예요.'
-  },
+
   {
     id: 'climate_canada_boreal',
     name: '캐나다 (타이가 숲·임업)',
