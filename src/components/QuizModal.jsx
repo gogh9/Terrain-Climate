@@ -30,20 +30,6 @@ export default function QuizModal({
   // Single exact photo for this location
   const currentImage = location.image;
 
-  // Anti-paste handlers for student inputs
-  const handleBlockPaste = (e) => {
-    e.preventDefault();
-    alert('⚠️ 붙여넣기는 사용할 수 없습니다. 직접 타이핑하여 작성해 주세요!');
-  };
-
-  const handleBlockDrop = (e) => {
-    e.preventDefault();
-    alert('⚠️ 텍스트 끌어다 놓기는 사용할 수 없습니다. 직접 타이핑하여 작성해 주세요!');
-  };
-
-  const handleBlockContextMenu = (e) => {
-    e.preventDefault();
-  };
 
   // Toggle TTS
   const handleToggleSpeech = (text) => {
@@ -267,9 +253,6 @@ export default function QuizModal({
                     rows={5}
                     value={inputFeature}
                     onChange={(e) => setInputFeature(e.target.value)}
-                    onPaste={handleBlockPaste}
-                    onDrop={handleBlockDrop}
-                    onContextMenu={handleBlockContextMenu}
                     placeholder="교과서에서 학습한 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 적어보세요."
                     style={{
                       width: '100%',
@@ -286,9 +269,6 @@ export default function QuizModal({
                       fontFamily: 'inherit'
                     }}
                   />
-                  <span style={{ fontSize: '0.82rem', color: '#b3b3b3', marginTop: '6px', display: 'block', fontWeight: 500 }}>
-                    🔒 직접 키보드로 작성해 주세요. (붙여넣기 사용 불가)
-                  </span>
                 </div>
 
                 {/* Submit Button */}
