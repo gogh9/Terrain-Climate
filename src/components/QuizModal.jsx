@@ -59,7 +59,12 @@ export default function QuizModal({
     }
 
     if (!cleanFeature) {
-      alert('이 지역의 환경이나 생활 모습 특징을 입력해 주세요!');
+      alert('이 지역의 환경이나 생활 모습 특징(서술형 답안)을 30자 이상 입력해 주세요!');
+      return;
+    }
+
+    if (cleanFeature.length < 30) {
+      alert(`서술형 답안을 30자 이상 작성해야 제출할 수 있습니다.\n\n(현재: ${cleanFeature.length}자 / 최소: 30자)`);
       return;
     }
 
@@ -318,7 +323,7 @@ export default function QuizModal({
                     rows={4}
                     value={inputFeature}
                     onChange={(e) => setInputFeature(e.target.value)}
-                    placeholder="교과서에서 학습한 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 적어보세요."
+                    placeholder="교과서에서 학습한 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 30자 이상 자세히 적어보세요."
                     style={{
                       width: '100%',
                       padding: '0.9rem 1.2rem',
@@ -334,6 +339,26 @@ export default function QuizModal({
                       fontFamily: 'inherit'
                     }}
                   />
+
+                  {/* Character Counter & Minimum 30 Guidance */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.82rem' }}>
+                    <span style={{ color: '#8e8e8e', fontSize: '0.8rem' }}>
+                      * 30자 이상 작성해야 제출할 수 있습니다.
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: inputFeature.trim().length >= 30 ? '#1ed760' : '#ffa42b',
+                        background: inputFeature.trim().length >= 30 ? 'rgba(30, 215, 96, 0.12)' : 'rgba(255, 164, 43, 0.12)',
+                        border: `1px solid ${inputFeature.trim().length >= 30 ? 'rgba(30, 215, 96, 0.3)' : 'rgba(255, 164, 43, 0.3)'}`,
+                        padding: '2px 9px',
+                        borderRadius: '6px',
+                        letterSpacing: '0.3px'
+                      }}
+                    >
+                      {inputFeature.trim().length >= 30 ? '✓ ' : ''}{inputFeature.trim().length} / 30자
+                    </span>
+                  </div>
                 </div>
 
                 {/* Submit Button */}
