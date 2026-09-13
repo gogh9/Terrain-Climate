@@ -598,121 +598,125 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleExportExcel(session); }}
-                      style={{
-                        background: '#1ed760',
-                        color: '#000000',
-                        border: 'none',
-                        padding: '6px 14px',
-                        borderRadius: '9999px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <Download size={14} /> 엑셀 저장
-                    </button>
+                {/* Card Top Right: Reset and Delete Buttons */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
+                    style={{
+                      background: '#1f1f1f',
+                      color: '#ffa42b',
+                      border: '1px solid #404040',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#282828'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                    title="이 회차 학생 제출 기록 초기화"
+                  >
+                    <RotateCcw size={12} /> 초기화
+                  </button>
 
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleToggleOpen(session.id); }}
-                      style={{
-                        background: session.isOpen ? '#1ed760' : '#282828',
-                        color: session.isOpen ? '#000000' : '#b3b3b3',
-                        border: 'none',
-                        padding: '6px 14px',
-                        borderRadius: '9999px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      ✓ {session.isOpen ? '입력 가능' : '마감'}
-                    </button>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
-                      style={{
-                        background: '#1f1f1f',
-                        color: '#ffa42b',
-                        border: '1px solid #404040',
-                        padding: '3px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        transition: 'border-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; }}
-                      title="이 회차 학생 제출 기록 초기화"
-                    >
-                      <RotateCcw size={12} /> 초기화
-                    </button>
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                      style={{
-                        background: '#1f1f1f',
-                        color: '#f3727f',
-                        border: '1px solid #404040',
-                        padding: '3px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        transition: 'border-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; }}
-                      title="이 회차 지도 삭제"
-                    >
-                      <Trash2 size={12} /> 삭제
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                    style={{
+                      background: '#1f1f1f',
+                      color: '#f3727f',
+                      border: '1px solid #404040',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#282828'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                    title="이 회차 지도 삭제"
+                  >
+                    <Trash2 size={12} /> 삭제
+                  </button>
                 </div>
               </div>
 
-              {/* Category Filter Selection */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#b3b3b3' }}>
-                <span>학습 주제:</span>
-                <select
-                  value={session.categoryFilter === 'landform' ? 'landform' : 'climate'}
-                  onChange={(e) => handleCategoryChange(session.id, e.target.value)}
-                  style={{
-                    background: '#1f1f1f',
-                    color: '#ffffff',
-                    border: '1px solid #7c7c7c',
-                    borderRadius: '9999px',
-                    padding: '4px 12px',
-                    fontSize: '0.82rem',
-                    outline: 'none',
-                    fontWeight: 700
-                  }}
-                >
-                  <option value="climate">☀️ 기후</option>
-                  <option value="landform">🏔️ 지형</option>
-                </select>
+              {/* Middle Control Bar: Category on Left & Actions on Right */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                {/* Category Filter Selection */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#b3b3b3' }}>
+                  <span style={{ fontWeight: 600 }}>학습 주제:</span>
+                  <select
+                    value={session.categoryFilter === 'landform' ? 'landform' : 'climate'}
+                    onChange={(e) => handleCategoryChange(session.id, e.target.value)}
+                    style={{
+                      background: '#1f1f1f',
+                      color: '#ffffff',
+                      border: '1px solid #404040',
+                      borderRadius: '9999px',
+                      padding: '5px 12px',
+                      fontSize: '0.82rem',
+                      outline: 'none',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="climate">☀️ 기후</option>
+                    <option value="landform">🏔️ 지형</option>
+                  </select>
+                </div>
+
+                {/* Actions: Excel Export & Open/Close Toggle */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleExportExcel(session); }}
+                    style={{
+                      background: '#1f1f1f',
+                      color: '#1ed760',
+                      border: '1px solid #1ed760',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#1ed760'; e.currentTarget.style.color = '#000000'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#1f1f1f'; e.currentTarget.style.color = '#1ed760'; }}
+                  >
+                    <Download size={14} /> 엑셀 저장
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleOpen(session.id); }}
+                    style={{
+                      background: session.isOpen ? '#1ed760' : '#282828',
+                      color: session.isOpen ? '#000000' : '#b3b3b3',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {session.isOpen ? '✓ 입력 가능' : '🔒 마감'}
+                  </button>
+                </div>
               </div>
 
               {/* Spotify Green Copy Link Button */}
