@@ -109,8 +109,8 @@ export default function QuizModal({
         isSuccess: false,
         score: 50,
         message: location.category === 'climate' 
-          ? '💡 특징은 잘 작성했어요! 기후(예: 열대 기후, 온대 기후, 건조 기후 등)를 다시 확인해 보세요.' 
-          : '💡 특징은 잘 작성했어요! 지형(예: 산지, 사막, 초원, 하천, 해안 등)을 다시 확인해 보세요.',
+          ? '💡 특징은 잘 작성했어요! 기후를 다시 확인해 보세요.' 
+          : '💡 특징은 잘 작성했어요! 지형을 다시 확인해 보세요.',
         matchedKeywords: matchedFeatureKeywords
       });
     } else if (isNameCorrect && !isFeatureGood) {
@@ -277,7 +277,6 @@ export default function QuizModal({
                     type="text"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
-                    placeholder={location.category === 'climate' ? '예: 열대 기후, 온대 기후, 건조 기후, 냉대 기후 등' : '예: 산지, 사막, 초원, 하천, 해안, 화산, 빙하 등'}
                     style={{
                       width: '100%',
                       padding: '0.8rem 1.2rem',
