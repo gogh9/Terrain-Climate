@@ -13,16 +13,15 @@ export default function QuizModal({
   user,
   studentUser
 }) {
-  const [activeTab, setActiveTab] = useState(isAlreadyCompleted ? 'review' : 'quiz'); // 'quiz' | 'explore' | 'review'
+  const [activeTab, setActiveTab] = useState('quiz');
   const [studentName, setStudentName] = useState(() => {
     if (studentUser?.fullName) return studentUser.fullName;
     if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
     if (user?.email) return user.email.split('@')[0];
     return localStorage.getItem('geo_last_student_name') || '';
   });
-  const [inputName, setInputName] = useState(previousAnswer?.name || '');
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
-  const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100 } : null);
+  const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100, message: '🎉 이미 학습 확인을 완료한 지점입니다.' } : null);
   const [showHint, setShowHint] = useState(false);
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -61,26 +60,20 @@ export default function QuizModal({
     e.preventDefault();
     const effectiveStudentName = studentUser?.fullName || studentName?.trim() || localStorage.getItem('geo_last_student_name') || '익명 학생';
 
-    if (!inputName.trim() || !inputFeature.trim()) {
-      alert('지형/기후 명칭과 특징을 모두 입력해 주세요!');
+    if (!inputFeature.trim()) {
+      alert('환경이나 생활 모습 특징을 입력해 주세요!');
       return;
     }
 
     sound.playClick();
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
-    // 1. Name Check
-    const cleanName = inputName.trim().replace(/\s+/g, '');
-    const isNameCorrect = location.nameKeywords.some(kw => cleanName.includes(kw.replace(/\s+/g, '')));
-
-    // 2. Feature Keywords Check
+    // Feature Keywords Check
     const cleanFeature = inputFeature.trim();
-    const matchedFeatureKeywords = location.featureKeywords.filter(kw => cleanFeature.includes(kw));
+    const matchedFeatureKeywords = location.featureKeywords ? location.featureKeywords.filter(kw => cleanFeature.includes(kw)) : [];
     const isFeatureGood = matchedFeatureKeywords.length >= 1 || cleanFeature.length >= 10;
 
-    const isTotalSuccess = isNameCorrect && isFeatureGood;
-
-    if (isTotalSuccess) {
+    if (isFeatureGood) {
       sound.playSuccess();
       confetti({
         particleCount: 80,
@@ -90,31 +83,23 @@ export default function QuizModal({
       setFeedback({
         isSuccess: true,
         score: 100,
-        message: '🎉 참 잘했어요! 지형/기후 명칭과 특징을 바르게 작성했습니다.',
+        message: '🎉 참 잘했어요! 교과서 핵심 특징을 바르게 작성했습니다.',
         matchedKeywords: matchedFeatureKeywords
       });
-      onComplete(location.id, { name: inputName, feature: inputFeature });
+      onComplete(location.id, { name: location.name, feature: inputFeature });
       saveQuizSubmission({
         locationId: location.id,
         locationTitle: location.name,
         studentName: effectiveStudentName,
-        answerName: inputName,
+        answerName: location.name,
         answerFeature: inputFeature,
         score: 100
-      });
-    }
- else if (isNameCorrect && !isFeatureGood) {
-      setFeedback({
-        isSuccess: false,
-        score: 50,
-        message: '💡 명칭은 맞았습니다! 특징 설명에 교과서 내용(예: 환경, 가옥, 농업, 옷차림 등)을 조금 더 자세히 적어보세요.',
-        matchedKeywords: matchedFeatureKeywords
       });
     } else {
       setFeedback({
         isSuccess: false,
-        score: 30,
-        message: '🧐 명칭을 다시 한번 확인해 보세요! 힌트를 참고하거나 교과서 이미지를 살펴보세요.',
+        score: 40,
+        message: '💡 특징 설명에 교과서 내용(예: 환경, 가옥, 농업, 옷차림 등)을 조금 더 자세히 적어보세요.',
         matchedKeywords: matchedFeatureKeywords
       });
     }
@@ -255,33 +240,11 @@ export default function QuizModal({
             {/* TAB 1: Quiz Form */}
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Input 1: Name */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
-                    1. {location.categoryName} 명칭을 입력하세요:
-                  </label>
-
-                  <input
-                    type="text"
-                    value={inputName}
-                    onChange={(e) => setInputName(e.target.value)}
-                    onPaste={handleBlockPaste}
-                    onDrop={handleBlockDrop}
-                    onContextMenu={handleBlockContextMenu}
-                    className="spotify-input"
-                    style={{
-                      width: '100%',
-                      fontSize: '1.05rem',
-                      fontWeight: 700
-                    }}
-                  />
-                </div>
-
-                {/* Input 2: Characteristic Description */}
+                {/* Input: Characteristic Description */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
-                      2. 이 지역의 환경이나 생활 모습 특징을 입력하세요:
+                      이 지역의 환경이나 생활 모습 특징을 입력하세요:
                     </label>
                     <button
                       type="button"
@@ -305,6 +268,7 @@ export default function QuizModal({
                     onPaste={handleBlockPaste}
                     onDrop={handleBlockDrop}
                     onContextMenu={handleBlockContextMenu}
+                    placeholder="교과서에서 학습한 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 적어보세요."
                     style={{
                       width: '100%',
                       padding: '0.9rem 1.2rem',
@@ -364,20 +328,6 @@ export default function QuizModal({
             {activeTab === 'explore' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#121212', padding: '1.25rem', borderRadius: '12px', border: '1px solid #282828' }}>
                 <div>
-                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>위치 및 대륙</span>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1ed760', marginTop: '2px' }}>
-                    {location.continent} ({location.lat.toFixed(2)}°, {location.lng.toFixed(2)}°)
-                  </div>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>주요 지형/기후 명칭</span>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffa42b', marginTop: '2px' }}>
-                    {location.name}
-                  </div>
-                </div>
-
-                <div>
                   <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>교과서 핵심 요약 정리</span>
                   <div style={{ fontSize: '1rem', color: '#ffffff', lineHeight: 1.7, marginTop: '6px', background: '#181818', padding: '16px', borderRadius: '8px', border: '1px solid #282828' }}>
                     {location.modelAnswer}
@@ -390,7 +340,7 @@ export default function QuizModal({
                     onClick={() => { sound.playClick(); setActiveTab('quiz'); }}
                     style={{ fontSize: '0.9rem', padding: '0.75rem 1.4rem' }}
                   >
-                    퀴즈 풀러 가기 <ArrowRight size={18} />
+                    학습 확인 입력하러 가기 <ArrowRight size={18} />
                   </button>
                 </div>
               </div>
