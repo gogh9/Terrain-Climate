@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, FileText, CheckCircle2, Users } from 'lucide-react';
+import { Globe, FileText, CheckCircle2, Users, LogOut } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 export default function Header({
@@ -9,6 +9,8 @@ export default function Header({
   onOpenTeacherDashboard,
   user,
   userRole,
+  studentUser,
+  onStudentLogout,
   onOpenLoginModal,
   categoryFilter = 'all'
 }) {
@@ -100,6 +102,57 @@ export default function Header({
             <FileText size={15} />
             <span>학습 요약 노트</span>
           </button>
+
+          {/* Student Profile & Logout (Shown when Student is logged in without Teacher) */}
+          {studentUser && !user && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  background: '#181818',
+                  border: '1px solid #1ed760',
+                  borderRadius: '9999px',
+                  padding: '0.35rem 0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  boxShadow: '0 2px 8px rgba(29, 215, 96, 0.25)'
+                }}
+              >
+                <span>🎒</span>
+                <span>{studentUser.fullName}</span>
+                <span style={{ fontSize: '0.72rem', color: '#1ed760', fontWeight: 900 }}>
+                  (학생)
+                </span>
+              </div>
+
+              <button
+                onClick={onStudentLogout}
+                style={{
+                  background: '#1f1f1f',
+                  border: '1px solid #7c7c7c',
+                  borderRadius: '9999px',
+                  padding: '0.35rem 0.75rem',
+                  color: '#b3b3b3',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.15s ease'
+                }}
+                title="학생 로그아웃 (시작화면으로 이동)"
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#f3727f'; e.currentTarget.style.borderColor = '#f3727f'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#b3b3b3'; e.currentTarget.style.borderColor = '#7c7c7c'; }}
+              >
+                <LogOut size={13} />
+                <span>로그아웃</span>
+              </button>
+            </div>
+          )}
 
           {/* Teacher Navigation & User Profile (Only shown when Teacher is logged in) */}
           {user && (

@@ -10,10 +10,12 @@ export default function QuizModal({
   onComplete,
   isAlreadyCompleted,
   previousAnswer,
-  user
+  user,
+  studentUser
 }) {
   const [activeTab, setActiveTab] = useState(isAlreadyCompleted ? 'review' : 'quiz'); // 'quiz' | 'explore' | 'review'
   const [studentName, setStudentName] = useState(() => {
+    if (studentUser?.fullName) return studentUser.fullName;
     if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
     if (user?.email) return user.email.split('@')[0];
     return localStorage.getItem('geo_last_student_name') || '';

@@ -162,9 +162,11 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     return groups;
   }, [submissions]);
 
-  // Unique Student Names
+  // Unique Student Names (Naturally sorted: 1번, 2번, 10번...)
   const studentNames = useMemo(() => {
-    return Object.keys(submissionsByStudent);
+    return Object.keys(submissionsByStudent).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }, [submissionsByStudent]);
 
   // Unsubmitted Locations Count

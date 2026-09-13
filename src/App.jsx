@@ -21,6 +21,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
+  const [studentUser, setStudentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_student_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);
@@ -65,18 +73,20 @@ export default function App() {
       const categoryParam = params.get('category');
       if (sessionId) {
         setActiveView('map');
-      }
-      if (categoryParam) {
-        setUrlCategory(categoryParam);
-      } else if (sessionId) {
         const saved = localStorage.getItem('geo_map_sessions');
         if (saved) {
           const sessions = JSON.parse(saved);
           const found = sessions.find(s => s.id === sessionId);
-          if (found && found.categoryFilter) {
-            setUrlCategory(found.categoryFilter);
+          if (found) {
+            setCurrentSession(found);
+            if (found.categoryFilter) {
+              setUrlCategory(found.categoryFilter);
+            }
           }
         }
+      }
+      if (categoryParam) {
+        setUrlCategory(categoryParam);
       }
     } catch (e) {
       console.warn('URL param parse error', e);
@@ -148,7 +158,34 @@ export default function App() {
     }));
   };
 
-  // Logout Handler
+  // Student Login Handler
+  const handleStudentLogin = ({ number, name }) => {
+    const fullName = `${number}번 ${name}`;
+    const info = { number, name, fullName };
+    setStudentUser(info);
+    setUserRole('student');
+    try {
+      localStorage.setItem('geo_student_user', JSON.stringify(info));
+      localStorage.setItem('geo_last_student_name', fullName);
+      localStorage.setItem('geo_user_role', 'student');
+    } catch (e) {
+      console.warn('Error saving student info', e);
+    }
+    setActiveView('map');
+  };
+
+  // Student Logout Handler
+  const handleStudentLogout = () => {
+    sound.playClick();
+    setStudentUser(null);
+    try {
+      localStorage.removeItem('geo_student_user');
+    } catch (e) {
+      console.warn('Error removing student info', e);
+    }
+  };
+
+  // Logout Handler (Teacher)
   const handleLogout = async () => {
     sound.playClick();
     await signOutUser();
@@ -166,13 +203,16 @@ export default function App() {
     );
   }
 
-  // If user is not logged in and not accessing student session link, show Landing Screen
+  // If neither teacher nor student is logged in, show Landing Screen
   const params = new URLSearchParams(window.location.search);
   const isStudentSession = Boolean(params.get('session'));
 
-  if (!user && !isStudentSession) {
+  if (!user && !studentUser) {
     return (
       <LandingScreen
+        isStudentSession={isStudentSession}
+        sessionInfo={currentSession}
+        onStudentLogin={handleStudentLogin}
         setUserRole={setUserRole}
       />
     );
@@ -208,6 +248,8 @@ export default function App() {
         }}
         user={user}
         userRole={userRole}
+        studentUser={studentUser}
+        onStudentLogout={handleStudentLogout}
         onOpenLoginModal={() => setShowLoginModal(true)}
       />
 
@@ -230,6 +272,7 @@ export default function App() {
           isAlreadyCompleted={completedIds.includes(selectedLocation.id)}
           previousAnswer={userAnswers[selectedLocation.id]}
           user={user}
+          studentUser={studentUser}
         />
       )}
 

@@ -1,13 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { signInWithGoogle } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
+import { LogIn, Sparkles, User, Hash } from 'lucide-react';
 
-export default function LandingScreen({ setUserRole }) {
+export default function LandingScreen({
+  isStudentSession = false,
+  sessionInfo = null,
+  onStudentLogin,
+  setUserRole
+}) {
+  const [studentMode, setStudentMode] = useState(isStudentSession);
+  const [studentNumber, setStudentNumber] = useState('');
+  const [studentName, setStudentName] = useState('');
+
   const handleGoogleLogin = async () => {
     sound.playClick();
     localStorage.setItem('geo_user_role', 'teacher');
     if (setUserRole) setUserRole('teacher');
     await signInWithGoogle();
+  };
+
+  const handleStudentSubmit = (e) => {
+    e.preventDefault();
+    const cleanNum = studentNumber.trim();
+    const cleanName = studentName.trim();
+
+    if (!cleanNum) {
+      alert('출석 번호를 입력해 주세요! (예: 5)');
+      return;
+    }
+    if (!cleanName) {
+      alert('학생 이름을 입력해 주세요! (예: 홍길동)');
+      return;
+    }
+
+    sound.playSuccess();
+    if (onStudentLogin) {
+      onStudentLogin({
+        number: cleanNum,
+        name: cleanName
+      });
+    }
   };
 
   return (
@@ -25,8 +58,8 @@ export default function LandingScreen({ setUserRole }) {
     >
       <div
         style={{
-          padding: '3.5rem 2.5rem',
-          maxWidth: '540px',
+          padding: '3.2rem 2.5rem',
+          maxWidth: '520px',
           width: '100%',
           borderRadius: '16px',
           background: '#181818',
@@ -45,7 +78,7 @@ export default function LandingScreen({ setUserRole }) {
             fontSize: '2.1rem',
             fontWeight: 900,
             color: '#ffffff',
-            margin: '0 0 1.2rem 0',
+            margin: '0 0 1rem 0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -62,7 +95,7 @@ export default function LandingScreen({ setUserRole }) {
           style={{
             fontSize: '1rem',
             color: '#b3b3b3',
-            margin: '0 0 2.5rem 0',
+            margin: '0 0 2rem 0',
             fontWeight: 400,
             lineHeight: 1.6,
             wordBreak: 'keep-all'
@@ -71,44 +104,246 @@ export default function LandingScreen({ setUserRole }) {
           우리 반 친구들과 함께 세계 여러 나라의 지형과 기후를 조사해 보아요!
         </p>
 
-        {/* Spotify Green Google Login Button */}
-        <button
-          onClick={handleGoogleLogin}
-          style={{
-            width: '100%',
-            padding: '1.1rem',
-            borderRadius: '9999px',
-            background: '#1ed760',
-            border: 'none',
-            color: '#000000',
-            fontSize: '1rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '1.6px',
-            cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(29, 215, 96, 0.4)',
-            transition: 'transform 0.15s ease, background-color 0.15s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#1ed760';
-            e.currentTarget.style.transform = 'scale(1.02)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#1ed760';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          GOOGLE 로그인
-        </button>
+        {/* Student Session Badge if present */}
+        {sessionInfo && (
+          <div
+            style={{
+              marginBottom: '1.5rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              background: 'rgba(30, 215, 96, 0.12)',
+              border: '1px solid rgba(30, 215, 96, 0.35)',
+              borderRadius: '9999px',
+              fontSize: '0.82rem',
+              color: '#1ed760',
+              fontWeight: 700
+            }}
+          >
+            <Sparkles size={14} />
+            <span>{sessionInfo.title || '우리 반 세계지도'} 참여 모드</span>
+          </div>
+        )}
+
+        {studentMode ? (
+          /* Student Number & Name Login Form */
+          <form
+            onSubmit={handleStudentSubmit}
+            style={{
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.1rem'
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', textAlign: 'left' }}>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.8rem',
+                    color: '#b3b3b3',
+                    marginBottom: '6px',
+                    fontWeight: 600
+                  }}
+                >
+                  <Hash size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+                  번호
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="99"
+                  placeholder="예: 7"
+                  value={studentNumber}
+                  onChange={(e) => setStudentNumber(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 1rem',
+                    background: '#242424',
+                    border: '1px solid #3e3e3e',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#1ed760';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(30, 215, 96, 0.3)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#3e3e3e';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '0.8rem',
+                    color: '#b3b3b3',
+                    marginBottom: '6px',
+                    fontWeight: 600
+                  }}
+                >
+                  <User size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+                  이름
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: 홍길동"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem 1rem',
+                    background: '#242424',
+                    border: '1px solid #3e3e3e',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#1ed760';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(30, 215, 96, 0.3)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#3e3e3e';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Spotify Green Enter Button */}
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '1.05rem',
+                borderRadius: '9999px',
+                background: '#1ed760',
+                border: 'none',
+                color: '#000000',
+                fontSize: '1.02rem',
+                fontWeight: 800,
+                letterSpacing: '0.5px',
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(29, 215, 96, 0.4)',
+                transition: 'transform 0.15s ease, background-color 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginTop: '0.5rem'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <LogIn size={18} />
+              <span>백지도 탐험 시작하기</span>
+            </button>
+
+            {/* Switch to Teacher Google Login */}
+            <div style={{ marginTop: '0.6rem' }}>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#8e8e8e',
+                  fontSize: '0.83rem',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#8e8e8e')}
+              >
+                교사이신가요? 구글 계정으로 로그인
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* Teacher Google Login Screen */
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <button
+              onClick={handleGoogleLogin}
+              style={{
+                width: '100%',
+                padding: '1.1rem',
+                borderRadius: '9999px',
+                background: '#1ed760',
+                border: 'none',
+                color: '#000000',
+                fontSize: '1rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1.6px',
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(29, 215, 96, 0.4)',
+                transition: 'transform 0.15s ease, background-color 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              GOOGLE 로그인
+            </button>
+
+            {/* Switch to Student Mode */}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setStudentMode(true);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#8e8e8e',
+                  fontSize: '0.83rem',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#8e8e8e')}
+              >
+                🎒 학생이신가요? 번호·이름으로 시작하기
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Footer Credit */}
         <div
           style={{
-            marginTop: '3rem',
+            marginTop: '2.5rem',
             fontSize: '0.85rem',
             color: '#71717a',
             letterSpacing: '-0.01em'
@@ -140,7 +375,6 @@ export default function LandingScreen({ setUserRole }) {
             도움말
           </a>
         </div>
-
       </div>
     </div>
   );
