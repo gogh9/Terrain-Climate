@@ -48,23 +48,6 @@ export const LOCATION_DATA = [
   },
 
   {
-    id: 'landform_usa_hawaii_volcano',
-    name: '미국 하와이 (화산)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '산지',
-    continent: '북아메리카',
-    lat: 19.4194,
-    lng: -155.2885,
-    pageRef: '교과서 12쪽',
-    image: '/교과서 이미지/지형/산지_화산(하와이).jpg',
-    images: ['/교과서 이미지/지형/산지_화산(하와이).jpg'],
-    nameKeywords: ['화산', '산지', '마우나로아', '산'],
-    featureKeywords: ['마그마', '용암', '폭발', '관광', '분출'],
-    modelAnswer: '땅속 마그마가 분출하여 굳어서 형성된 화산 지형으로, 신비로운 자연 경관을 보기 위한 관광 산업이 발달했습니다.',
-    hint: '땅속의 마그마가 솟아오르며 만들어진 지형이에요.'
-  },
-  {
     id: 'landform_nigeria_plateau',
     name: '나이지리아 (고원)',
     category: 'landform',
@@ -99,38 +82,24 @@ export const LOCATION_DATA = [
     hint: '세계에서 유량이 가장 많은 거대한 물줄기 지형이에요.'
   },
   {
-    id: 'landform_vietnam_mekong_river',
-    name: '베트남 (메콩강)',
+    id: 'landform_vietnam_thailand_river',
+    name: '베트남·타이 (메콩강·짜오프라야강)',
     category: 'landform',
     categoryName: '지형',
     subType: '하천',
     continent: '아시아',
-    lat: 10.0333,
-    lng: 105.7833,
+    lat: 11.5,
+    lng: 103.0,
     pageRef: '교과서 17쪽',
     image: '/교과서 이미지/지형/하천_수상 시장(베트남).jpg',
-    images: ['/교과서 이미지/지형/하천_수상 시장(베트남).jpg'],
-    nameKeywords: ['하천', '강'],
-    featureKeywords: ['수상 시장', '배', '교통로', '물건', '메콩강'],
-    modelAnswer: '큰 하천을 사람과 물자를 실어 나르는 수운 교통로로 활용하며, 물 위에서 배를 대고 물건을 사고파는 수상 시장이 발달했습니다.',
-    hint: '물 위에서 배를 이용하여 물건을 사고파는 수상 시장이 열리는 물줄기 지형이에요.'
-  },
-  {
-    id: 'landform_thailand_chao_river',
-    name: '타이 (짜오프라야강)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '하천',
-    continent: '아시아',
-    lat: 13.7563,
-    lng: 100.5018,
-    pageRef: '교과서 17쪽',
-    image: '/교과서 이미지/지형/하천_수상 가옥(타이).jpg',
-    images: ['/교과서 이미지/지형/하천_수상 가옥(타이).jpg'],
-    nameKeywords: ['하천', '강'],
-    featureKeywords: ['수상 가옥', '물', '더위', '해충', '물 위', '짜오프라야'],
-    modelAnswer: '풍부한 물이 흐르는 하천 주변에서 더위와 해충을 피하기 위해 물 위에 기둥을 세우고 수상 가옥을 짓고 살아갑니다.',
-    hint: '물 위에 집을 짓고 생활하는 수상 가옥이 발달한 물줄기 지형이에요.'
+    images: [
+      '/교과서 이미지/지형/하천_수상 시장(베트남).jpg',
+      '/교과서 이미지/지형/하천_수상 가옥(타이).jpg'
+    ],
+    nameKeywords: ['하천', '강', '메콩강', '짜오프라야강', '베트남', '타이', '태국'],
+    featureKeywords: ['수상 시장', '수상 가옥', '배', '교통로', '물 위', '수운', '더위', '해충', '기둥'],
+    modelAnswer: '동남아시아의 큰 하천을 수운 교통로로 활용하여 배 위에서 물건을 사고파는 수상 시장이 열리고, 더위와 해충을 피하기 위해 물 위에 기둥을 세운 수상 가옥을 짓고 생활합니다.',
+    hint: '하천 물길을 이용해 배 위에서 물건을 파는 수상 시장과 물 위에 지은 수상 가옥이 발달한 지형이에요.'
   },
   {
     id: 'landform_canada_ottawa_river',
@@ -166,23 +135,7 @@ export const LOCATION_DATA = [
     modelAnswer: '하천이 흘러가다 절벽을 만나 거대한 폭포가 되어 떨어지는 하천 지형으로, 웅장한 경관을 활용한 관광 산업이 발달했습니다.',
     hint: '하천이 흐르다 절벽을 만나 시원하게 떨어지는 물줄기 지형이에요.'
   },
-  {
-    id: 'landform_netherlands_rhine_canal',
-    name: '네덜란드 (라인 운하)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '하천',
-    continent: '유럽',
-    lat: 52.3676,
-    lng: 4.9041,
-    pageRef: '교과서 17쪽',
-    image: '/교과서 이미지/지형/하천_운하(네덜란드).jpg',
-    images: ['/교과서 이미지/지형/하천_운하(네덜란드).jpg'],
-    nameKeywords: ['하천', '운하', '강'],
-    featureKeywords: ['물길', '수운', '교통로', '배', '암스테르담'],
-    modelAnswer: '배가 드나들 수 있도록 육지에 물길을 파서 하천과 바다를 연결한 운하를 만들어 내륙 수상 교통로로 활발히 이용합니다.',
-    hint: '배가 다닐 수 있도록 인공적으로 연결한 내륙 물길 교통로 지형이에요.'
-  },
+
   {
     id: 'landform_peru_titicaca_lake',
     name: '페루 (티티카카호와)',
@@ -200,27 +153,7 @@ export const LOCATION_DATA = [
     modelAnswer: '해발 고도 약 3,812m의 높은 고원 지대에 하천의 물이 고여 형성된 거대한 호수로, 독특한 전통 생활 문화와 관광 산업이 발달했습니다.',
     hint: '물이 고여 있는 호수로, 세계에서 가장 높은 곳에 있는 큰 호수 지형이에요.'
   },
-  {
-    id: 'landform_norway_fjord',
-    name: '노르웨이 (피오르)',
-    category: 'landform',
-    categoryName: '지형',
-    subType: '해안',
-    continent: '유럽',
-    lat: 61.2,
-    lng: 7.1,
-    pageRef: '교과서 20~23쪽',
-    image: '/교과서 이미지/지형/해안_피오르 해안1(노르웨이).jpg',
-    images: [
-      '/교과서 이미지/지형/해안_피오르 해안1(노르웨이).jpg',
-      '/교과서 이미지/지형/해안_피오르 해안2(노르웨이).jpg',
-      '/교과서 이미지/지형/해안_양식장2(노르웨이).jpg'
-    ],
-    nameKeywords: ['해안', '피오르', '피오르 해안', '피오르해안'],
-    featureKeywords: ['빙하', '침식', '유람선', '연어', '양식', '절경', '바닷물', '깊다'],
-    modelAnswer: '옛날 빙하의 침식으로 만들어진 골짜기에 바닷물이 들어와 형성된 피오르 해안으로, 빼어난 절경을 보는 유람선 관광과 깨끗한 바다를 이용한 연어 양식업이 발달했습니다.',
-    hint: '빙하가 깎아 만든 골짜기에 바닷물이 들어온 좁고 긴 만으로, 연어 양식과 유람선 관광이 발달한 해안이에요.'
-  },
+
   {
     id: 'landform_australia_coral_coast',
     name: '오스트레일리아 (산호 해안)',
@@ -548,7 +481,7 @@ export const CONTINENTS = [
 
 export const BADGES = [
   { id: 'novice', title: '지리 탐험 입문자', icon: '🗺️', reqCount: 1, desc: '첫 번째 지점 학습 완료!' },
-  { id: 'landform_expert', title: '세계 지형 전문가', icon: '🏔️', reqCount: 8, category: 'landform', desc: '지형 지점 8개 학습 완료!' },
-  { id: 'climate_master', title: '세계 기후 마스터', icon: '☀️', reqCount: 8, category: 'climate', desc: '기후 지점 8개 학습 완료!' },
-  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 22, desc: '모든 지형과 기후 지명 완벽 정복!' }
+  { id: 'landform_expert', title: '세계 지형 전문가', icon: '🏔️', reqCount: 6, category: 'landform', desc: '지형 지점 6개 학습 완료!' },
+  { id: 'climate_master', title: '세계 기후 마스터', icon: '☀️', reqCount: 6, category: 'climate', desc: '기후 지점 6개 학습 완료!' },
+  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 18, desc: '모든 지형과 기후 지명 완벽 정복!' }
 ];
