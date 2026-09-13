@@ -321,38 +321,24 @@ export const LOCATION_DATA = [
     hint: '사계절이 뚜렷하고 날씨가 온화하여 벼농사를 짓는 기후예요.'
   },
   {
-    id: 'climate_netherlands_temperate',
-    name: '네덜란드 (화훼 농업)',
-    category: 'climate',
-    categoryName: '기후',
-    subType: '온대 기후',
-    continent: '유럽',
-    lat: 52.1326,
-    lng: 5.2913,
-    pageRef: '교과서 40~41쪽',
-    image: '/교과서 이미지/기후/온대_화훼 농업(네덜란드).jpg',
-    images: ['/교과서 이미지/기후/온대_화훼 농업(네덜란드).jpg'],
-    nameKeywords: ['온대', '온대 기후', '온대기후', '서안 해양성', '서안해양성'],
-    featureKeywords: ['꽃', '튤립', '화훼', '비', '고르게', '온화'],
-    modelAnswer: '여름이 서늘하고 겨울이 비교적 따뜻하며 일 년 내내 비가 고르게 내려 튤립과 같은 꽃을 기르는 화훼 농업이 발달한 온대 기후입니다.',
-    hint: '일 년 내내 날씨가 비교적 온화하고 비가 고르게 내려 아름다운 꽃을 재배하는 기후예요.'
-  },
-  {
-    id: 'climate_uk_temperate',
-    name: '영국 (밀농사·목축업)',
+    id: 'climate_uk_netherlands_temperate',
+    name: '영국·네덜란드 (밀농사·화훼 농업)',
     category: 'climate',
     categoryName: '기후',
     subType: '온대 기후',
     continent: '유럽',
     lat: 51.5074,
-    lng: -0.1278,
+    lng: 0.1278,
     pageRef: '교과서 40~41쪽',
     image: '/교과서 이미지/기후/온대_밀농사 목축업(영국).jpg',
-    images: ['/교과서 이미지/기후/온대_밀농사 목축업(영국).jpg'],
-    nameKeywords: ['온대', '온대 기후', '온대기후'],
-    featureKeywords: ['밀', '목축업', '가축', '서늘', '농업', '빵'],
-    modelAnswer: '기온이 온화하고 비가 고르게 내려 곡물인 밀 농사와 푸른 초지에서 가축을 기르는 혼합 목축업이 발달한 온대 기후입니다.',
-    hint: '사람이 살기 적합하고 밀 농사와 가축 사육이 활발한 온화한 기후예요.'
+    images: [
+      '/교과서 이미지/기후/온대_밀농사 목축업(영국).jpg',
+      '/교과서 이미지/기후/온대_화훼 농업(네덜란드).jpg'
+    ],
+    nameKeywords: ['온대', '온대 기후', '온대기후', '서안 해양성', '서안해양성', '영국', '네덜란드'],
+    featureKeywords: ['밀', '목축업', '가축', '화훼', '꽃', '튤립', '온화', '비', '고르게'],
+    modelAnswer: '여름이 서늘하고 겨울이 비교적 따뜻하며 일 년 내내 비가 고르게 내리는 온대 기후로, 영국에서는 밀 농사와 목축업이 발달하고 네덜란드에서는 튤립 등 꽃을 기르는 화훼 농업이 발달했습니다.',
+    hint: '일 년 내내 날씨가 온화하고 비가 고르게 내려 밀 농사와 가축 사육, 아름다운 꽃을 재배하는 기후예요.'
   },
   {
     id: 'climate_russia_boreal',
@@ -412,28 +398,8 @@ export const LOCATION_DATA = [
     hint: '비가 적게 내려 짧은 풀이 자라며 게르를 짓고 가축과 함께 이동 생활을 하는 기후예요.'
   },
   {
-    id: 'climate_algeria_dry',
-    name: '알제리 (사하라 사막)',
-    category: 'climate',
-    categoryName: '기후',
-    subType: '건조 기후',
-    continent: '아프리카',
-    lat: 28.0339,
-    lng: 1.6596,
-    pageRef: '교과서 38쪽',
-    image: '/교과서 이미지/기후/건조_사막(알제리).jpg',
-    images: [
-      '/교과서 이미지/기후/건조_사막(알제리).jpg',
-      '/교과서 이미지/기후/건조_사막2(알제리).jpg'
-    ],
-    nameKeywords: ['건조', '건조 기후', '건조기후', '사막'],
-    featureKeywords: ['모래', '햇볕', '강수량', '증발량', '비', '온몸'],
-    modelAnswer: '강수량보다 증발량이 훨씬 많고 비가 거의 내리지 않아 모래사막이 펼쳐지며, 강한 햇볕과 모래바람을 막기 위해 온몸을 감싸는 옷을 입습니다.',
-    hint: '비가 거의 내리지 않고 증발량이 많아 모래사막이 형성된 기후예요.'
-  },
-  {
-    id: 'climate_morocco_dry',
-    name: '모로코 (흙집)',
+    id: 'climate_morocco_algeria_dry',
+    name: '모로코·알제리 (사하라 사막·흙집)',
     category: 'climate',
     categoryName: '기후',
     subType: '건조 기후',
@@ -441,12 +407,16 @@ export const LOCATION_DATA = [
     lat: 31.7917,
     lng: -7.0926,
     pageRef: '교과서 38쪽',
-    image: '/교과서 이미지/기후/건조_오아시스 흙집(모로코).jpg',
-    images: ['/교과서 이미지/기후/건조_오아시스 흙집(모로코).jpg'],
-    nameKeywords: ['건조', '건조 기후', '건조기후'],
-    featureKeywords: ['오아시스', '흙집', '대추야자', '밀', '벽', '두껍'],
-    modelAnswer: '비가 매우 적게 내리는 건조한 환경에서 오아시스나 하천의 물을 끌어와 대추야자를 재배하고, 열기를 차단하기 위해 두꺼운 흙벽으로 집을 짓습니다.',
-    hint: '오아시스 물을 이용하여 대추야자를 기르고 두꺼운 흙집을 짓는 기후예요.'
+    image: '/교과서 이미지/기후/건조_사막(알제리).jpg',
+    images: [
+      '/교과서 이미지/기후/건조_사막(알제리).jpg',
+      '/교과서 이미지/기후/건조_사막2(알제리).jpg',
+      '/교과서 이미지/기후/건조_오아시스 흙집(모로코).jpg'
+    ],
+    nameKeywords: ['건조', '건조 기후', '건조기후', '사막', '오아시스', '모로코', '알제리'],
+    featureKeywords: ['모래', '사막', '오아시스', '흙집', '대추야자', '햇볕', '비', '강수량', '증발량', '두껍'],
+    modelAnswer: '비가 거의 내리지 않고 증발량이 많은 건조 기후로, 알제리에서는 끝없는 모래사막(사하라 사막)이 펼쳐지고 모로코에서는 오아시스 주변에 두꺼운 흙집을 짓고 대추야자를 재배합니다.',
+    hint: '비가 매우 적게 내려 거대한 모래사막이 펼쳐지고, 오아시스 주변에 두꺼운 흙집을 짓는 기후예요.'
   },
   {
     id: 'climate_saudi_dry',
@@ -541,7 +511,7 @@ export const LOCATION_DATA = [
   },
   {
     id: 'climate_canada_polar',
-    name: '캐나다 (순록 유목·이글루와)',
+    name: '캐나다 (순록 유목·이글루)',
     category: 'climate',
     categoryName: '기후',
     subType: '한대 기후',
@@ -578,23 +548,6 @@ export const LOCATION_DATA = [
     featureKeywords: ['해발', '고도', '감자', '모자', '망토', '서늘', '온화'],
     modelAnswer: '저위도의 해발 고도가 매우 높은 산지에 위치하여 일 년 내내 봄 날씨처럼 온화하고 서늘하며, 강한 햇볕과 밤의 추위를 막기 위해 챙 넓은 모자와 망토를 입고 감자와 옥수수를 먹습니다.',
     hint: '해발 고도가 매우 높은 산지에 형성되어 일 년 내내 봄처럼 서늘한 기후예요.'
-  },
-  {
-    id: 'climate_mexico_highland',
-    name: '멕시코 (고산 옥수수밭)',
-    category: 'climate',
-    categoryName: '기후',
-    subType: '고산 기후',
-    continent: '북아메리카',
-    lat: 19.4326,
-    lng: -99.1332,
-    pageRef: '교과서 45쪽',
-    image: '/교과서 이미지/기후/고산_옥수수밭(멕시코).jpg',
-    images: ['/교과서 이미지/기후/고산_옥수수밭(멕시코).jpg'],
-    nameKeywords: ['고산', '고산 기후', '고산기후'],
-    featureKeywords: ['옥수수', '해발', '고도', '서늘', '타코'],
-    modelAnswer: '해발 고도가 높은 고산 지대로 평지보다 서늘한 기후에서도 잘 자라는 옥수수를 재배하며, 이를 가루 내어 만든 전통 음식 타코가 발달했습니다.',
-    hint: '높은 지대에서 서늘한 기후에 잘 자라는 옥수수를 재배하고 타코를 먹는 기후예요.'
   }
 ];
 
@@ -613,5 +566,5 @@ export const BADGES = [
   { id: 'novice', title: '지리 탐험 입문자', icon: '🗺️', reqCount: 1, desc: '첫 번째 지점 학습 완료!' },
   { id: 'landform_expert', title: '세계 지형 전문가', icon: '🏔️', reqCount: 8, category: 'landform', desc: '지형 지점 8개 학습 완료!' },
   { id: 'climate_master', title: '세계 기후 마스터', icon: '☀️', reqCount: 8, category: 'climate', desc: '기후 지점 8개 학습 완료!' },
-  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 25, desc: '모든 지형과 기후 지명 완벽 정복!' }
+  { id: 'grand_explorer', title: '6학년 사회 지리 완등 왕', icon: '👑', reqCount: 22, desc: '모든 지형과 기후 지명 완벽 정복!' }
 ];
