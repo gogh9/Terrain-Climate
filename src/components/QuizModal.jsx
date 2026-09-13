@@ -584,6 +584,8 @@ export default function QuizModal({
                     rows={4}
                     value={inputFeature}
                     onChange={(e) => setInputFeature(e.target.value)}
+                    onPaste={(e) => e.preventDefault()}
+                    onDrop={(e) => e.preventDefault()}
                     placeholder="교과서에서 학습했거나 사진을 통해서 알 수 있는 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 20자 이상 자세히 적어보세요."
                     style={{
                       width: '100%',
