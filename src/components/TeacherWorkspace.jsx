@@ -121,21 +121,42 @@ export const getColumnsForSession = (session, subs = []) => {
   return [...defaultList, ...extraCols];
 };
 
+// 회차 목록을 무조건 순서대로 1회, 2회, 3회... 로 재부여하는 헬퍼
+export const renumberSessions = (sessionList) => {
+  if (!Array.isArray(sessionList)) return [];
+  return sessionList.map((s, index) => {
+    const num = index + 1;
+    const dateMatch = (s.title || '').match(/\((.*?)\)/);
+    let datePart = '';
+    if (dateMatch) {
+      datePart = `(${dateMatch[1]})`;
+    } else if (s.createdAt) {
+      const d = new Date(s.createdAt);
+      datePart = `(${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.)`;
+    }
+    return {
+      ...s,
+      title: `${num}회${datePart}`
+    };
+  });
+};
+
 export default function TeacherWorkspace({ user, locations = [], initialSessionId, onEnterMap, onLogout }) {
-  // Saved sessions list (sorted so 1회 is on the left, newer sessions on the right)
+  // Saved sessions list (sorted so 1회 is on the left, newer sessions on the right, always renumbered 1, 2, 3...)
   const [sessions, setSessions] = useState(() => {
     try {
       const saved = localStorage.getItem('geo_map_sessions');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Sort ascending so 1회 is on the left, 2회, 3회... to the right
-          return parsed.sort((a, b) => {
+          // Sort ascending by existing sequence or createdAt
+          const sorted = parsed.sort((a, b) => {
             const numA = parseInt((a.title || '').match(/(\d+)회/)?.[1] || '0', 10);
             const numB = parseInt((b.title || '').match(/(\d+)회/)?.[1] || '0', 10);
-            if (numA && numB) return numA - numB;
+            if (numA && numB && numA !== numB) return numA - numB;
             return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
           });
+          return renumberSessions(sorted);
         }
       }
     } catch (e) {
@@ -190,17 +211,16 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     return () => clearInterval(interval);
   }, []);
 
-  // Create New Map Session (새 지도는 오른쪽에 추가)
+  // Create New Map Session (새 지도는 오른쪽에 추가하며 순서대로 1,2,3회 재부여)
   const handleCreateNewMap = () => {
     sound.playClick();
     const newId = String(Date.now());
-    const count = sessions.length + 1;
     const now = new Date();
     const dateStr = `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}.`;
 
     const newSession = {
       id: newId,
-      title: `${count}회(${dateStr})`,
+      title: `(${dateStr})`,
       categoryFilter: 'climate',
       continents: [...ALL_CONTINENTS],
       isOpen: true,
@@ -208,7 +228,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       createdAt: now.toISOString()
     };
 
-    setSessions(prev => [...prev, newSession]);
+    setSessions(prev => renumberSessions([...prev, newSession]));
     setActiveSessionId(newId);
   };
 
@@ -266,7 +286,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     alert('초기화되었습니다.');
   };
 
-  // Delete Session Card
+  // Delete Session Card (삭제 후 남은 세션들을 순서대로 1,2,3회로 자동 재부여)
   const handleDeleteSession = (sessionId) => {
     if (sessions.length <= 1) {
       alert('최소 1개의 지도는 유지되어야 합니다.');
@@ -275,10 +295,15 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     if (!window.confirm('이 지도를 삭제하시겠습니까?')) return;
     sound.playClick();
     const strId = String(sessionId);
-    setSessions(prev => prev.filter(s => String(s.id) !== strId));
-    if (String(activeSessionId) === strId) {
-      setActiveSessionId(String(sessions[0].id));
-    }
+    
+    setSessions(prev => {
+      const remaining = prev.filter(s => String(s.id) !== strId);
+      const renumbered = renumberSessions(remaining);
+      if (String(activeSessionId) === strId && renumbered.length > 0) {
+        setActiveSessionId(String(renumbered[0].id));
+      }
+      return renumbered;
+    });
   };
 
   // Active Session helper
