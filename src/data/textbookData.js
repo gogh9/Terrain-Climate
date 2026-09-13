@@ -166,7 +166,7 @@ export const LOCATION_DATA = [
   },
   {
     id: 'climate_temperate',
-    name: '대한민국 / 벼농사',
+    name: '대한민국, 벼농사',
     category: 'climate',
     categoryName: '기후',
     subType: '온대 기후',
@@ -182,7 +182,7 @@ export const LOCATION_DATA = [
   },
   {
     id: 'climate_boreal',
-    name: '러시아 / 타이가',
+    name: '러시아, 타이가',
     category: 'climate',
     categoryName: '기후',
     subType: '냉대 기후',

@@ -5,15 +5,21 @@ import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
 
-// 기후 지점 표준 순서 (사용자 엑셀 캡처 이미지 순서와 동일)
+// 기후 지점 표준 순서 (쉼표 구분으로 일관되게 정리)
 export const CLIMATE_ORDER = [
-  '대한민국 / 벼농사',
-  '러시아 / 타이가',
+  '대한민국, 벼농사',
+  '러시아, 타이가',
   '사우디아라비아, 사막',
   '볼리비아, 안데스 산지',
   '브라질, 아마존',
   '그린란드, 툰드라'
 ];
+
+// 지점명 내 슬래시(/)를 쉼표(,)로 통일 정규화하는 헬퍼
+export const normalizeTitle = (title) => {
+  if (!title) return '';
+  return String(title).replace(/\s*\/\s*/g, ', ').trim();
+};
 
 // 지형 지점 표준 순서
 export const LANDFORM_ORDER = [
@@ -105,7 +111,8 @@ export const getColumnsForSession = (session, subs = []) => {
 
   const extraCols = [];
   subs.forEach(s => {
-    const title = s.location_title || s.answer_name;
+    const rawTitle = s.location_title || s.answer_name;
+    const title = normalizeTitle(rawTitle);
     if (title && !defaultList.includes(title) && !extraCols.includes(title)) {
       extraCols.push(title);
     }
@@ -293,7 +300,8 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       if (!studentsMap[rawName]) {
         studentsMap[rawName] = {};
       }
-      const title = sub.location_title || sub.answer_name;
+      const rawTitle = sub.location_title || sub.answer_name;
+      const title = normalizeTitle(rawTitle);
       if (title) {
         studentsMap[rawName][title] = sub.answer_feature || '';
       }
@@ -410,12 +418,19 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
 
   // Match location information from master locations list
   const getLocationInfo = (sub) => {
-    const found = locations.find(l => l.id === sub.location_id || l.name === sub.location_title || l.name === sub.answer_name);
+    const rawTitle = sub.location_title || sub.answer_name || '';
+    const normTitle = normalizeTitle(rawTitle);
+    const found = locations.find(l => 
+      l.id === sub.location_id || 
+      l.name === rawTitle || 
+      l.name === normTitle ||
+      (l.name && normalizeTitle(l.name) === normTitle)
+    );
     if (found) return found;
     return {
-      name: sub.location_title || sub.answer_name || '탐험 지점',
+      name: normTitle || '탐험 지점',
       category: 'climate',
-      categoryName: '기후/지형',
+      categoryName: '기후, 지형',
       continent: '전체',
       modelAnswer: '교과서 핵심 요약 내용이 제공되지 않는 지점입니다.'
     };
@@ -443,7 +458,8 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     sessionSubmissions.forEach(sub => {
       const raw = sub.student_name || '익명 학생';
       if (!map[raw]) map[raw] = {};
-      const title = sub.location_title || sub.answer_name;
+      const rawTitle = sub.location_title || sub.answer_name;
+      const title = normalizeTitle(rawTitle);
       if (title) {
         map[raw][title] = sub;
       }
@@ -1081,7 +1097,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '1.6rem' }}>{loc.category === 'landform' ? '🏔️' : '☀️'}</span>
                     <h3 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                      {selectedSubmission.location_title || selectedSubmission.answer_name}
+                      {normalizeTitle(selectedSubmission.location_title || selectedSubmission.answer_name)}
                     </h3>
                     <span style={{ background: '#1ed760', color: '#000', fontWeight: 800, fontSize: '0.75rem', padding: '2px 8px', borderRadius: '9999px' }}>
                       {loc.categoryName}
