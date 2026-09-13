@@ -192,6 +192,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         categoryFilter: 'landform', // 'landform' | 'climate'
         continents: ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'],
         isOpen: true,
+        allowExplore: true,
         accessCount: 0,
         createdAt: new Date().toISOString()
       }
@@ -247,6 +248,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       categoryFilter: 'landform',
       continents: [...ALL_CONTINENTS],
       isOpen: true,
+      allowExplore: true,
       accessCount: 0,
       createdAt: now.toISOString()
     };
@@ -262,6 +264,19 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     setSessions(prev => prev.map(s => String(s.id) === strId ? { ...s, isOpen: !s.isOpen } : s));
   };
 
+  // Toggle Textbook Exploration Permission (allowExplore)
+  const handleToggleExplore = (sessionId) => {
+    sound.playClick();
+    const strId = String(sessionId);
+    setSessions(prev => prev.map(s => {
+      if (String(s.id) === strId) {
+        const currentVal = s.allowExplore !== false;
+        return { ...s, allowExplore: !currentVal };
+      }
+      return s;
+    }));
+  };
+
   // Toggle Category Filter (Landform / Climate)
   const handleCategoryChange = (sessionId, category) => {
     sound.playClick();
@@ -274,7 +289,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const handleCopyLink = (session) => {
     sound.playClick();
     const cat = session.categoryFilter === 'climate' ? 'climate' : 'landform';
-    const link = `${window.location.origin}/?session=${session.id}&category=${cat}`;
+    const explore = session.allowExplore !== false ? '1' : '0';
+    const link = `${window.location.origin}/?session=${session.id}&category=${cat}&explore=${explore}`;
     navigator.clipboard.writeText(link);
     setCopiedId(session.id);
     alert(`📋 학생 배부용 링크가 복사되었습니다!\n\n${link}`);
@@ -839,8 +855,30 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       gap: '4px',
                       transition: 'all 0.15s ease'
                     }}
+                    title="학생들의 답안 제출 가능 여부를 설정합니다"
                   >
                     {session.isOpen ? '✓ 입력 가능' : '🔒 마감'}
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleExplore(session.id); }}
+                    style={{
+                      background: session.allowExplore !== false ? '#1ed760' : '#282828',
+                      color: session.allowExplore !== false ? '#000000' : '#b3b3b3',
+                      border: session.allowExplore !== false ? 'none' : '1px solid #404040',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="학생들의 퀴즈 창 내 '교과서 핵심 탐색' 이용 가능 여부를 설정합니다"
+                  >
+                    {session.allowExplore !== false ? '📖 탐색 가능' : '🔒 탐색 잠금'}
                   </button>
                 </div>
               </div>

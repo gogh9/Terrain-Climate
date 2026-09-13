@@ -27,6 +27,13 @@ export default function App() {
   const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);
   const [urlCategory, setUrlCategory] = useState(null);
+  const [urlExplore, setUrlExplore] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('explore');
+    } catch {
+      return null;
+    }
+  });
   const [sessionParam, setSessionParam] = useState(() => {
     try {
       return new URLSearchParams(window.location.search).get('session');
@@ -66,12 +73,13 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check URL parameters for Student Session links (?session=...&category=...)
+  // Check URL parameters for Student Session links (?session=...&category=...&explore=...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session');
       const categoryParam = params.get('category');
+      const exploreParam = params.get('explore');
       if (sessionId) {
         setSessionParam(sessionId);
         setActiveView('map');
@@ -89,6 +97,9 @@ export default function App() {
       }
       if (categoryParam) {
         setUrlCategory(categoryParam);
+      }
+      if (exploreParam !== null) {
+        setUrlExplore(exploreParam);
       }
     } catch (e) {
       console.warn('URL param parse error', e);
@@ -111,6 +122,13 @@ export default function App() {
 
   // Determine effective session ID
   const effectiveSessionId = currentSession?.id || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session') : null) || '1';
+
+  // Determine whether textbook exploration tab is allowed in QuizModal
+  const allowExplore = Boolean(user)
+    ? true
+    : (currentSession?.allowExplore !== undefined
+        ? currentSession.allowExplore !== false
+        : (urlExplore !== null ? urlExplore !== '0' : true));
 
   // Completed IDs & Typed Answers isolated per session
   const [completedIds, setCompletedIds] = useState(() => {
@@ -291,7 +309,8 @@ export default function App() {
           setActiveView('map');
           try {
             const cat = session.categoryFilter === 'landform' ? 'landform' : 'climate';
-            const newUrl = `${window.location.pathname}?session=${session.id}&category=${cat}`;
+            const explore = session.allowExplore !== false ? '1' : '0';
+            const newUrl = `${window.location.pathname}?session=${session.id}&category=${cat}&explore=${explore}`;
             window.history.replaceState(null, '', newUrl);
           } catch (e) {
             console.warn(e);
@@ -343,6 +362,7 @@ export default function App() {
           user={user}
           studentUser={studentUser}
           sessionId={effectiveSessionId}
+          allowExplore={allowExplore}
         />
       )}
 

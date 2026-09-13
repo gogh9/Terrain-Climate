@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Volume2, VolumeX, CheckCircle, HelpCircle, Eye, Sparkles, ArrowRight, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
@@ -12,9 +12,17 @@ export default function QuizModal({
   previousAnswer,
   user,
   studentUser,
-  sessionId = '1'
+  sessionId = '1',
+  allowExplore = true
 }) {
+  const canExplore = Boolean(user) || allowExplore !== false;
   const [activeTab, setActiveTab] = useState('quiz');
+
+  useEffect(() => {
+    if (!canExplore && activeTab === 'explore') {
+      setActiveTab('quiz');
+    }
+  }, [canExplore, activeTab]);
   const [studentName, setStudentName] = useState(() => {
     if (studentUser?.fullName) return studentUser.fullName;
     if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
@@ -377,25 +385,58 @@ export default function QuizModal({
               >
                 📝 학습 확인 입력
               </button>
-              <button
-                onClick={() => { sound.playClick(); setActiveTab('explore'); }}
-                style={{
-                  flex: 1,
-                  padding: '0.7rem',
-                  fontSize: '0.9rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  border: 'none',
-                  borderRadius: '9999px',
-                  background: activeTab === 'explore' ? '#1ed760' : 'transparent',
-                  color: activeTab === 'explore' ? '#000000' : '#b3b3b3',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                📖 교과서 핵심 탐색
-              </button>
+              {canExplore ? (
+                <button
+                  type="button"
+                  onClick={() => { sound.playClick(); setActiveTab('explore'); }}
+                  style={{
+                    flex: 1,
+                    padding: '0.7rem',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    border: 'none',
+                    borderRadius: '9999px',
+                    background: activeTab === 'explore' ? '#1ed760' : 'transparent',
+                    color: activeTab === 'explore' ? '#000000' : '#b3b3b3',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  📖 교과서 핵심 탐색
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    alert('🔒 선생님께서 이번 회차의 "교과서 핵심 탐색" 이용을 잠금 설정하셨습니다.\n스스로 생각하여 퀴즈를 풀어보세요!');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.7rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    border: 'none',
+                    borderRadius: '9999px',
+                    background: 'transparent',
+                    color: '#666666',
+                    cursor: 'not-allowed',
+                    opacity: 0.6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="선생님께서 교과서 핵심 탐색을 잠금 설정하셨습니다"
+                >
+                  🔒 핵심 탐색 잠김
+                </button>
+              )}
             </div>
 
             {/* TAB 1: Quiz Form */}
