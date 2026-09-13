@@ -140,9 +140,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
   const [submissions, setSubmissions] = useState([]);
   const [studentFilter, setStudentFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState('horizontal'); // 'horizontal' | 'cards' | 'table'
   const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [showUnsubmittedAccordion, setShowUnsubmittedAccordion] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -458,15 +456,6 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     return Object.keys(studentMatrixMap).sort(compareStudents);
   }, [studentMatrixMap]);
 
-  // Unsubmitted Locations Count
-  const submittedLocationTitles = useMemo(() => {
-    return new Set(submissions.map(s => s.location_title).filter(Boolean));
-  }, [submissions]);
-
-  const unsubmittedLocations = useMemo(() => {
-    return locations.filter(loc => !submittedLocationTitles.has(loc.name));
-  }, [locations, submittedLocationTitles]);
-
   return (
     <div
       style={{
@@ -489,7 +478,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
         }}
       >
         <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
-          우리 반 세계지도
+          우리반 세계지도(기후, 지형)
         </h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -759,72 +748,8 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
         })}
       </div>
 
-      {/* Accordion: Unsubmitted Locations Tracker */}
-      <div
-        style={{
-          background: '#181818',
-          borderRadius: '12px',
-          border: '1px solid #282828',
-          marginBottom: '2rem',
-          overflow: 'hidden'
-        }}
-      >
-        <div
-          onClick={() => setShowUnsubmittedAccordion(!showUnsubmittedAccordion)}
-          style={{
-            padding: '1.1rem 1.5rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'pointer',
-            background: '#1f1f1f'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.05rem', fontWeight: 700 }}>
-            <span>🧙‍♂️</span>
-            <span>아직 입력되지 않은 지역</span>
-            <span style={{ background: '#1ed760', color: '#000', padding: '2px 10px', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: 900 }}>
-              {unsubmittedLocations.length}개
-            </span>
-          </div>
-          <div style={{ color: '#b3b3b3', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
-            <span>{showUnsubmittedAccordion ? '접기' : '펼치기'}</span>
-            {showUnsubmittedAccordion ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </div>
-        </div>
-
-        {showUnsubmittedAccordion && (
-          <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #282828', background: '#121212' }}>
-            {unsubmittedLocations.length === 0 ? (
-              <div style={{ color: '#1ed760', fontWeight: 700, fontSize: '0.9rem' }}>
-                🎉 모든 지형과 기후 지점이 성공적으로 탐험 및 제출되었습니다!
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {unsubmittedLocations.map(loc => (
-                  <span
-                    key={loc.id}
-                    style={{
-                      background: '#1f1f1f',
-                      border: '1px solid #333333',
-                      color: '#cbcbcb',
-                      padding: '6px 14px',
-                      borderRadius: '9999px',
-                      fontSize: '0.83rem',
-                      fontWeight: 600
-                    }}
-                  >
-                    {loc.category === 'landform' ? '🏔️' : '☀️'} {loc.name} ({loc.continent})
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Student Submissions Section */}
-      <div style={{ marginTop: '2.5rem' }}>
+      <div style={{ marginTop: '1.5rem' }}>
         {/* Section Header with Stats & Controls */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
@@ -832,19 +757,13 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                 📝 학생 학습 제출 내용 확인 & 관리
               </h2>
-              <span style={{ background: '#1ed760', color: '#000', fontSize: '0.78rem', fontWeight: 900, padding: '3px 10px', borderRadius: '9999px' }}>
-                총 {submissions.length}건
-              </span>
               <span style={{ background: '#282828', color: '#b3b3b3', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
                 참여 학생 {studentNames.length}명
               </span>
             </div>
-            <p style={{ fontSize: '0.82rem', color: '#b3b3b3', marginTop: '4px', margin: 0 }}>
-              학생들이 작성한 지형·기후의 환경 및 생활 모습 특징을 실시간으로 확인하고 교과서 모범 답안과 비교할 수 있습니다.
-            </p>
           </div>
 
-          {/* View Mode Switch & Refresh */}
+          {/* Refresh Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => {
@@ -856,80 +775,19 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 background: '#1f1f1f',
                 border: '1px solid #333333',
                 color: '#b3b3b3',
-                padding: '6px 12px',
+                padding: '6px 14px',
                 borderRadius: '9999px',
                 fontSize: '0.8rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '5px'
               }}
             >
               <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
               <span>새로고침</span>
             </button>
-
-            {/* Toggle View Mode Buttons */}
-            <div style={{ display: 'flex', background: '#1f1f1f', padding: '3px', borderRadius: '9999px', border: '1px solid #333333' }}>
-              <button
-                onClick={() => { sound.playClick(); setViewMode('horizontal'); }}
-                style={{
-                  background: viewMode === 'horizontal' ? '#1ed760' : 'transparent',
-                  color: viewMode === 'horizontal' ? '#000000' : '#b3b3b3',
-                  border: 'none',
-                  padding: '5px 14px',
-                  borderRadius: '9999px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Table size={14} /> 한 줄 가로 보기
-              </button>
-              <button
-                onClick={() => { sound.playClick(); setViewMode('cards'); }}
-                style={{
-                  background: viewMode === 'cards' ? '#1ed760' : 'transparent',
-                  color: viewMode === 'cards' ? '#000000' : '#b3b3b3',
-                  border: 'none',
-                  padding: '5px 12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <LayoutGrid size={14} /> 학생별 카드
-              </button>
-              <button
-                onClick={() => { sound.playClick(); setViewMode('table'); }}
-                style={{
-                  background: viewMode === 'table' ? '#1ed760' : 'transparent',
-                  color: viewMode === 'table' ? '#000000' : '#b3b3b3',
-                  border: 'none',
-                  padding: '5px 12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <FileText size={14} /> 전체 목록 표
-              </button>
-            </div>
           </div>
         </div>
 
@@ -991,7 +849,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                 : '검색 및 필터 조건에 일치하는 학생 제출 기록이 없습니다.'}
             </div>
           </div>
-        ) : viewMode === 'horizontal' ? (
+        ) : (
           /* HORIZONTAL MATRIX VIEW (엑셀 시트처럼 가로로 길게 한 줄 정렬) */
           <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #282828', background: '#181818', boxShadow: 'rgba(0, 0, 0, 0.35) 0px 8px 16px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem', minWidth: `${300 + activeColumns.length * 260}px` }}>
@@ -1212,225 +1070,6 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                           title="해당 학생의 모든 제출 기록 삭제"
                         >
                           <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : viewMode === 'cards' ? (
-          /* CARD VIEW */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
-            {filteredStudentNames.map(studentName => {
-              const list = filteredSubmissionsByStudent[studentName] || [];
-
-              return (
-                <div
-                  key={studentName}
-                  style={{
-                    background: '#181818',
-                    borderRadius: '16px',
-                    border: '1px solid #282828',
-                    padding: '1.35rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: 'rgba(0, 0, 0, 0.35) 0px 8px 16px'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '1.2rem' }}>👤</span>
-                      <h4 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                        {studentName}
-                      </h4>
-                    </div>
-                    <span style={{ background: 'rgba(30, 215, 96, 0.15)', color: '#1ed760', padding: '3px 10px', borderRadius: '9999px', fontSize: '0.76rem', fontWeight: 800 }}>
-                      제출 {list.length}곳 완료
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {list.map(sub => {
-                      const loc = getLocationInfo(sub);
-                      return (
-                        <div
-                          key={sub.id}
-                          style={{
-                            background: '#121212',
-                            borderRadius: '12px',
-                            border: '1px solid #262626',
-                            padding: '12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                            transition: 'border-color 0.15s ease'
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                              <span style={{ fontSize: '0.95rem' }}>{loc.category === 'landform' ? '🏔️' : '☀️'}</span>
-                              <span style={{ color: '#1ed760', fontWeight: 800, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {sub.location_title || sub.answer_name}
-                              </span>
-                              <span style={{ fontSize: '0.7rem', color: '#94a3b8', background: '#1f1f1f', padding: '1px 6px', borderRadius: '4px' }}>
-                                {loc.continent}
-                              </span>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span style={{ fontSize: '0.72rem', color: '#71717a' }}>
-                                {sub.created_at ? new Date(sub.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!window.confirm(`'${studentName}' 학생의 '${sub.location_title || sub.answer_name}' 제출 기록을 삭제하시겠습니까?`)) return;
-                                  sound.playClick();
-                                  await deleteSubmission(sub.id);
-                                  loadSubmissions();
-                                }}
-                                style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
-                                title="삭제"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Student Response Bubble */}
-                          <div
-                            onClick={() => setSelectedSubmission(sub)}
-                            style={{
-                              background: '#181818',
-                              border: '1px solid #333333',
-                              borderRadius: '8px',
-                              padding: '10px 12px',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1ed760'}
-                            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#333333'}
-                            title="클릭하여 교과서 모범 답안과 비교 및 상세 확인"
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '0.74rem', color: '#38bdf8', fontWeight: 700 }}>
-                                ✍️ 학생 작성 내용:
-                              </span>
-                              <span style={{ fontSize: '0.72rem', color: '#1ed760', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                <Eye size={12} /> 모범답안 비교
-                              </span>
-                            </div>
-                            <div style={{ fontSize: '0.86rem', color: '#f1f5f9', lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                              {sub.answer_feature || '(작성된 특징 내용이 없습니다)'}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          /* TABLE VIEW */
-          <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #282828', background: '#181818' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#1f1f1f', color: '#1ed760', borderBottom: '1px solid #282828' }}>
-                  <th style={{ padding: '12px 16px', width: '55px' }}>No.</th>
-                  <th style={{ padding: '12px 16px', width: '120px' }}>제출 학생</th>
-                  <th style={{ padding: '12px 16px', width: '170px' }}>지점/기후명</th>
-                  <th style={{ padding: '12px 16px' }}>학생이 입력한 특징 및 생활 모습 내용</th>
-                  <th style={{ padding: '12px 16px', width: '130px' }}>제출 시각</th>
-                  <th style={{ padding: '12px 16px', width: '90px', textAlign: 'center' }}>상세/비교</th>
-                  <th style={{ padding: '12px 16px', width: '50px', textAlign: 'center' }}>삭제</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSubmissions.map((sub, idx) => {
-                  const loc = getLocationInfo(sub);
-                  return (
-                    <tr
-                      key={sub.id || idx}
-                      style={{ borderBottom: '1px solid #242424', transition: 'background 0.15s ease' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#1e1e1e'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 16px', color: '#71717a', fontWeight: 700 }}>
-                        {filteredSubmissions.length - idx}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 800, color: '#1ed760' }}>
-                        👤 {sub.student_name || '익명 학생'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 700, color: '#ffffff' }}>
-                        {loc.category === 'landform' ? '🏔️ ' : '☀️ '}{sub.location_title || sub.answer_name}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div
-                          onClick={() => setSelectedSubmission(sub)}
-                          style={{
-                            color: '#ffffff',
-                            lineHeight: 1.5,
-                            cursor: 'pointer',
-                            background: '#121212',
-                            padding: '8px 12px',
-                            borderRadius: '6px',
-                            border: '1px solid #2a2a2a',
-                            wordBreak: 'break-word',
-                            whiteSpace: 'pre-wrap',
-                            transition: 'border-color 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1ed760'}
-                          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#2a2a2a'}
-                          title="클릭하여 모범 답안과 함께 상세 확인"
-                        >
-                          {sub.answer_feature || '(작성 내용 없음)'}
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '0.8rem' }}>
-                        {sub.created_at ? new Date(sub.created_at).toLocaleString('ko-KR', {
-                          month: 'numeric',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        }) : '-'}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <button
-                          onClick={() => setSelectedSubmission(sub)}
-                          style={{
-                            background: '#1ed760',
-                            color: '#000000',
-                            border: 'none',
-                            borderRadius: '9999px',
-                            padding: '4px 10px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <Eye size={12} /> 확인
-                        </button>
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm(`'${sub.student_name}' 학생의 제출 기록을 삭제하시겠습니까?`)) return;
-                            sound.playClick();
-                            await deleteSubmission(sub.id);
-                            loadSubmissions();
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', opacity: 0.7 }}
-                          title="삭제"
-                        >
-                          <Trash2 size={15} />
                         </button>
                       </td>
                     </tr>
