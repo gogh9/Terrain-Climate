@@ -156,7 +156,7 @@ export default function SummaryNoteModal({
                       ✏️ 학생 제출 작성 내용:
                     </div>
                     <div className="summary-note-student-text" style={{ color: '#ffffff', marginBottom: '6px' }}>
-                      - 명칭: <strong>{(ans.name || '').replace(/\s*\/\s*/g, ', ')}</strong><br />
+                      - {loc.category === 'climate' ? '기후' : '지형'}: <strong>{(ans.name || '').replace(/\s*\/\s*/g, ', ')}</strong><br />
                       - 특징: {ans.feature}
                     </div>
                     <div className="summary-note-label" style={{ color: '#1ed760', fontWeight: 700, marginBottom: '2px', borderTop: '1px solid #282828', paddingTop: '6px' }}>

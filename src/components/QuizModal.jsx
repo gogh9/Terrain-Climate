@@ -21,6 +21,7 @@ export default function QuizModal({
     if (user?.email) return user.email.split('@')[0];
     return localStorage.getItem('geo_last_student_name') || '';
   });
+  const [inputName, setInputName] = useState(previousAnswer?.name || '');
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
   const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100, message: '🎉 이미 학습 확인을 완료한 지점입니다.' } : null);
   const [showHint, setShowHint] = useState(false);
@@ -29,7 +30,6 @@ export default function QuizModal({
 
   // Single exact photo for this location
   const currentImage = location.image;
-
 
   // Toggle TTS
   const handleToggleSpeech = (text) => {
@@ -47,20 +47,41 @@ export default function QuizModal({
     e.preventDefault();
     const effectiveStudentName = studentUser?.fullName || studentName?.trim() || localStorage.getItem('geo_last_student_name') || '익명 학생';
 
-    if (!inputFeature.trim()) {
-      alert('환경이나 생활 모습 특징을 입력해 주세요!');
+    const cleanName = inputName.trim();
+    const cleanFeature = inputFeature.trim();
+
+    if (!cleanName) {
+      alert(location.category === 'climate' 
+        ? '이 지역에 나타나는 기후를 입력해 주세요!' 
+        : '이 지역에서 볼 수 있는 지형을 입력해 주세요!'
+      );
+      return;
+    }
+
+    if (!cleanFeature) {
+      alert('이 지역의 환경이나 생활 모습 특징을 입력해 주세요!');
       return;
     }
 
     sound.playClick();
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
-    // Feature Keywords Check
-    const cleanFeature = inputFeature.trim();
-    const matchedFeatureKeywords = location.featureKeywords ? location.featureKeywords.filter(kw => cleanFeature.includes(kw)) : [];
-    const isFeatureGood = matchedFeatureKeywords.length >= 1 || cleanFeature.length >= 10;
+    // 1. Name Keywords Check (기후 or 지형 명칭 검사)
+    const nameKeywords = [
+      ...(location.nameKeywords || []),
+      ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
+    ];
+    const isNameCorrect = nameKeywords.some(kw => {
+      const normKw = kw.replace(/\s+/g, '').toLowerCase();
+      const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
+      return normInput.includes(normKw) || normKw.includes(normInput);
+    });
 
-    if (isFeatureGood) {
+    // 2. Feature Keywords Check
+    const matchedFeatureKeywords = location.featureKeywords ? location.featureKeywords.filter(kw => cleanFeature.includes(kw)) : [];
+    const isFeatureGood = matchedFeatureKeywords.length >= 1 || cleanFeature.length >= 8;
+
+    if (isNameCorrect && isFeatureGood) {
       sound.playSuccess();
       confetti({
         particleCount: 80,
@@ -70,24 +91,42 @@ export default function QuizModal({
       setFeedback({
         isSuccess: true,
         score: 100,
-        message: '🎉 참 잘했어요! 교과서 핵심 특징을 바르게 작성했습니다.',
+        message: `🎉 참 잘했어요! ${location.category === 'climate' ? '기후' : '지형'}와 핵심 특징을 바르게 작성했습니다.`,
         matchedKeywords: matchedFeatureKeywords
       });
-      onComplete(location.id, { name: location.name, feature: inputFeature });
+      onComplete(location.id, { name: cleanName, feature: cleanFeature });
       saveQuizSubmission({
         sessionId: String(sessionId || '1'),
         locationId: location.id,
         locationTitle: location.name,
         studentName: effectiveStudentName,
-        answerName: location.name,
-        answerFeature: inputFeature,
+        answerName: cleanName,
+        answerFeature: cleanFeature,
         score: 100
+      });
+    } else if (!isNameCorrect && isFeatureGood) {
+      setFeedback({
+        isSuccess: false,
+        score: 50,
+        message: location.category === 'climate' 
+          ? '💡 특징은 잘 작성했어요! 기후(예: 열대 기후, 온대 기후, 건조 기후 등)를 다시 확인해 보세요.' 
+          : '💡 특징은 잘 작성했어요! 지형(예: 산지, 사막, 초원, 하천, 해안 등)을 다시 확인해 보세요.',
+        matchedKeywords: matchedFeatureKeywords
+      });
+    } else if (isNameCorrect && !isFeatureGood) {
+      setFeedback({
+        isSuccess: false,
+        score: 50,
+        message: '💡 명칭은 맞았습니다! 특징 설명에 교과서 내용(예: 환경, 가옥, 농업, 옷차림 등)을 조금 더 자세히 적어보세요.',
+        matchedKeywords: matchedFeatureKeywords
       });
     } else {
       setFeedback({
         isSuccess: false,
-        score: 40,
-        message: '💡 특징 설명에 교과서 내용(예: 환경, 가옥, 농업, 옷차림 등)을 조금 더 자세히 적어보세요.',
+        score: 30,
+        message: location.category === 'climate' 
+          ? '🧐 힌트를 참고하여 알맞은 기후와 특징을 다시 작성해 보세요.' 
+          : '🧐 힌트를 참고하여 알맞은 지형과 특징을 다시 작성해 보세요.',
         matchedKeywords: matchedFeatureKeywords
       });
     }
@@ -228,7 +267,34 @@ export default function QuizModal({
             {/* TAB 1: Quiz Form */}
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Input: Characteristic Description */}
+                
+                {/* Input 1: Climate or Landform */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
+                    {location.category === 'climate' ? '이 지역에 나타나는 기후를 쓰시오:' : '이 지역에서 볼 수 있는 지형을 쓰시오:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={inputName}
+                    onChange={(e) => setInputName(e.target.value)}
+                    placeholder={location.category === 'climate' ? '예: 열대 기후, 온대 기후, 건조 기후, 냉대 기후 등' : '예: 산지, 사막, 초원, 하천, 해안, 화산, 빙하 등'}
+                    style={{
+                      width: '100%',
+                      padding: '0.8rem 1.2rem',
+                      background: '#1f1f1f',
+                      color: '#ffffff',
+                      borderRadius: '12px',
+                      boxShadow: 'rgb(18, 18, 18) 0px 1px 0px, rgb(124, 124, 124) 0px 0px 0px 1px inset',
+                      border: 'none',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+
+                {/* Input 2: Characteristic Description */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <label style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
@@ -250,7 +316,7 @@ export default function QuizModal({
                   )}
 
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={inputFeature}
                     onChange={(e) => setInputFeature(e.target.value)}
                     placeholder="교과서에서 학습한 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 적어보세요."
@@ -298,7 +364,12 @@ export default function QuizModal({
                         📖 교과서 모범 답안 비교:
                       </div>
                       <div style={{ fontSize: '0.95rem', color: '#ffffff', lineHeight: 1.6 }}>
-                        {location.modelAnswer}
+                        <div style={{ marginBottom: '4px', color: '#ffa42b', fontWeight: 700 }}>
+                          • {location.category === 'climate' ? '기후' : '지형'}: {location.subType}
+                        </div>
+                        <div>
+                          • 환경 및 생활 모습: {location.modelAnswer}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -309,6 +380,15 @@ export default function QuizModal({
             {/* TAB 2: Exploration & Textbook Model Answer */}
             {activeTab === 'explore' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: '#121212', padding: '1.25rem', borderRadius: '12px', border: '1px solid #282828' }}>
+                <div>
+                  <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>
+                    {location.category === 'climate' ? '나타나는 기후' : '볼 수 있는 지형'}
+                  </span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1ed760', marginTop: '4px' }}>
+                    {location.subType}
+                  </div>
+                </div>
+
                 <div>
                   <span style={{ fontSize: '0.85rem', color: '#b3b3b3', fontWeight: 500 }}>교과서 핵심 요약 정리</span>
                   <div style={{ fontSize: '1rem', color: '#ffffff', lineHeight: 1.7, marginTop: '6px', background: '#181818', padding: '16px', borderRadius: '8px', border: '1px solid #282828' }}>
