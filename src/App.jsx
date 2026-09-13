@@ -257,10 +257,12 @@ export default function App() {
     setCurrentSession(null);
     setSessionParam(null);
     setUrlCategory(null);
-    setUserRole(null);
+    setUrlExplore(null);
+    setUserRole('teacher');
     setActiveView('workspace');
+    setShowLoginModal(false);
     try {
-      localStorage.removeItem('geo_user_role');
+      localStorage.setItem('geo_user_role', 'teacher');
       localStorage.removeItem('geo_student_user');
       window.history.replaceState(null, '', window.location.pathname);
     } catch (e) {
@@ -288,6 +290,7 @@ export default function App() {
         sessionInfo={currentSession}
         onStudentLogin={handleStudentLogin}
         setUserRole={setUserRole}
+        initialRole={userRole}
       />
     );
   }
@@ -392,6 +395,7 @@ export default function App() {
           user={user}
           userRole={userRole}
           setUserRole={setUserRole}
+          onLogout={handleLogout}
           onClose={() => setShowLoginModal(false)}
         />
       )}

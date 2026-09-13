@@ -7,13 +7,21 @@ export default function LandingScreen({
   isStudentSession = false,
   sessionInfo = null,
   onStudentLogin,
-  setUserRole
+  setUserRole,
+  initialRole = null
 }) {
-  const [studentMode, setStudentMode] = useState(isStudentSession);
+  const [studentMode, setStudentMode] = useState(() => {
+    if (initialRole === 'teacher') return false;
+    return isStudentSession;
+  });
 
   React.useEffect(() => {
-    setStudentMode(isStudentSession);
-  }, [isStudentSession]);
+    if (initialRole === 'teacher') {
+      setStudentMode(false);
+    } else {
+      setStudentMode(isStudentSession);
+    }
+  }, [isStudentSession, initialRole]);
   const [studentClass, setStudentClass] = useState(() => {
     try {
       const saved = localStorage.getItem('geo_student_user');
@@ -152,7 +160,7 @@ export default function LandingScreen({
           </div>
         )}
 
-        {isStudentSession || studentMode ? (
+        {studentMode ? (
           /* Student Class, Number & Name Login Form */
           <form
             onSubmit={handleStudentSubmit}
@@ -333,9 +341,36 @@ export default function LandingScreen({
               <LogIn size={18} />
               <span>세계 지형도 탐험 시작하기</span>
             </button>
+
+            {/* Switch to Teacher Login */}
+            <div style={{ marginTop: '0.6rem', textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setStudentMode(false);
+                  if (setUserRole) setUserRole('teacher');
+                  localStorage.setItem('geo_user_role', 'teacher');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9e9e9e',
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: '6px 12px',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#9e9e9e'}
+              >
+                👨‍🏫 교사이신가요? 교사 로그인으로 이동
+              </button>
+            </div>
           </form>
         ) : (
-          /* Teacher Google Login Screen (Only shown when not on student session link) */
+          /* Teacher Google Login Screen */
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
             <button
               onClick={handleGoogleLogin}
@@ -367,6 +402,33 @@ export default function LandingScreen({
             >
               GOOGLE 로그인
             </button>
+
+            {/* Switch to Student Mode */}
+            <div style={{ marginTop: '0.4rem', textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setStudentMode(true);
+                  if (setUserRole) setUserRole('student');
+                  localStorage.setItem('geo_user_role', 'student');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9e9e9e',
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: '6px 12px',
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#9e9e9e'}
+              >
+                🎒 학생이신가요? 학생 참여 화면으로 이동
+              </button>
+            </div>
           </div>
         )}
 
@@ -393,15 +455,36 @@ export default function LandingScreen({
             gap: '1.2rem'
           }}
         >
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <a
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+          >
             개인정보처리방침
           </a>
           <span>·</span>
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <a
+            href="/terms.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+          >
             사용약관
           </a>
           <span>·</span>
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <a
+            href="/help.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+          >
             도움말
           </a>
         </div>

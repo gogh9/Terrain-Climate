@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>도움말 및 이용 가이드 - 지형과 기후를 알아봅시다</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #121212;
+      --bg-card: #181818;
+      --bg-inner: #242424;
+      --border-color: #2e2e2e;
+      --text-main: #ffffff;
+      --text-muted: #b3b3b3;
+      --primary: #1ed760;
+      --primary-hover: #1db954;
+      --accent-orange: #ffa42b;
+      --accent-badge: rgba(30, 215, 96, 0.15);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.7;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 840px;
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+    .header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .title-area h1 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .title-area p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      background: var(--bg-inner);
+      padding: 4px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+    }
+    .nav-tabs a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 9999px;
+      transition: all 0.2s ease;
+    }
+    .nav-tabs a:hover {
+      color: var(--text-main);
+    }
+    .nav-tabs a.active {
+      background: var(--primary);
+      color: #000000;
+    }
+    .guide-card {
+      background: var(--bg-inner);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .guide-card h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .guide-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 1rem 0 0.5rem 0;
+    }
+    .step-list {
+      list-style: none;
+      counter-reset: step-counter;
+      padding-left: 0;
+    }
+    .step-list li {
+      position: relative;
+      padding-left: 2.2rem;
+      margin-bottom: 0.85rem;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+    }
+    .step-list li::before {
+      content: counter(step-counter);
+      counter-increment: step-counter;
+      position: absolute;
+      left: 0;
+      top: 2px;
+      width: 22px;
+      height: 22px;
+      background: var(--primary);
+      color: #000000;
+      font-weight: 900;
+      font-size: 0.78rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .faq-item {
+      background: #1c1c1c;
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .faq-q {
+      font-weight: 700;
+      color: var(--accent-orange);
+      font-size: 0.98rem;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .faq-a {
+      color: #b3b3b3;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+    .badge-green {
+      background: rgba(30, 215, 96, 0.2);
+      color: #1ed760;
+      border: 1px solid rgba(30, 215, 96, 0.4);
+    }
+    .footer-actions {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      margin-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .btn-home {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary);
+      color: #000000;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 0.75rem 1.4rem;
+      border-radius: 9999px;
+      text-decoration: none;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    .btn-home:hover {
+      background: var(--primary-hover);
+      transform: scale(1.02);
+    }
+    .copyright {
+      font-size: 0.82rem;
+      color: #71717a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title-area">
+        <h1>💡 도움말 및 이용 가이드</h1>
+        <p>지형과 기후를 알아봅시다 (Terrain & Climate)</p>
+      </div>
+      <div class="nav-tabs">
+        <a href="privacy.html">개인정보처리방침</a>
+        <a href="terms.html">사용약관</a>
+        <a href="help.html" class="active">도움말</a>
+      </div>
+    </div>
+
+    <!-- Teacher Guide -->
+    <div class="guide-card">
+      <h2>👨‍🏫 선생님을 위한 수업 운영 가이드</h2>
+      <ol class="step-list">
+        <li>
+          <strong>교사 로그인 및 세션 생성:</strong><br>
+          메인 화면에서 <code>GOOGLE 로그인</code>을 통해 접속하면 교사 워크스페이스로 진입합니다. <code>새 회차 만들기</code> 버튼을 눌러 수업 차시(예: 1회차, 2회차 등)를 생성하세요.
+        </li>
+        <li>
+          <strong>학습 주제 선택:</strong><br>
+          회차 카드 내에서 <span class="badge badge-green">🏔️ 지형</span> 또는 <span class="badge badge-green">☀️ 기후</span> 주제를 선택하여 해당 수업에 맞게 지도 핀을 맞춤 설정합니다.
+        </li>
+        <li>
+          <strong>학생 배부용 링크 복사:</strong><br>
+          초록색 <code>📋 학생 배부용 링크 복사</code> 버튼을 클릭하여 클래스룸, 패들렛, 온작품 등에 공유하세요. 학생들은 별도 가입 없이 반, 번호, 이름만으로 바로 참여할 수 있습니다.
+        </li>
+        <li>
+          <strong>실시간 수업 컨트롤:</strong><br>
+          <code>✓ 입력 가능 / 🔒 마감</code> 버튼으로 학생 제출 가능 여부를 제어하고, <code>📖 탐색 가능 / 🔒 탐색 잠금</code> 버튼으로 퀴즈 창 내 교과서 힌트 탐색 기능 사용을 실시간 통제할 수 있습니다.
+        </li>
+        <li>
+          <strong>결과 확인 및 엑셀 다운로드:</strong><br>
+          <code>📥 엑셀 저장</code>을 누르면 해당 회차의 학생별 제출 현황 및 서술형 답변이 엑셀(.xlsx) 파일로 즉시 다운로드됩니다.
+        </li>
+      </ol>
+    </div>
+
+    <!-- Student Guide -->
+    <div class="guide-card">
+      <h2>🎒 학생을 위한 지도 탐험 가이드</h2>
+      <ol class="step-list">
+        <li>
+          <strong>참여하기:</strong><br>
+          선생님이 전달해 주신 링크로 접속하여 자신의 <strong>반, 번호, 이름</strong>을 입력하고 <code>세계 지형도 탐험 시작하기</code>를 누릅니다.
+        </li>
+        <li>
+          <strong>세계지도 핀 클릭:</strong><br>
+          세계지도 위에 표시된 여러 나라의 핀을 클릭하여 아름다운 사진과 함께 그 지역의 지형과 기후 특징을 확인합니다.
+        </li>
+        <li>
+          <strong>탐구 퀴즈 풀기:</strong><br>
+          해당 지역의 올바른 지형/기후 유형을 선택하고, 주민들의 생활 모습 및 특징을 <strong>20자 이상</strong> 자세히 적어 제출합니다. (부정 제출 방지를 위해 직접 타이핑해야 합니다)
+        </li>
+        <li>
+          <strong>교과서 핵심 탐색 및 요약노트:</strong><br>
+          상단의 <code>📖 요약 정리노트</code>를 통해 지금까지 학습한 세계 여러 지역의 자연환경을 한눈에 복습할 수 있습니다.
+        </li>
+      </ol>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="guide-card">
+      <h2>❓ 자주 묻는 질문 (FAQ)</h2>
+      
+      <div class="faq-item">
+        <div class="faq-q">Q. 학생들의 답안 작성 시 붙여넣기가 되지 않아요.</div>
+        <div class="faq-a">A. 학생들이 교과서 내용을 스스로 생각하고 직접 작성하도록 유도하기 위해 답안 서술 영역의 복사/붙여넣기 및 드래그 앤 드롭이 차단되어 있습니다.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q. 다른 반 수업을 진행할 때 기존 기록이 섞이지 않나요?</div>
+        <div class="faq-a">A. 교사 워크스페이스에서 <code>새 회차 만들기</code>를 통해 반별 또는 차시별로 세션을 개별 생성하여 독립적으로 관리하실 수 있습니다.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q">Q. 학생 화면에서 교사 로그인 창으로 어떻게 이동하나요?</div>
+        <div class="faq-a">A. 로그인 화면 하단의 <code>[👨‍🏫 교사이신가요? 교사 로그인으로 이동]</code> 링크를 누르면 구글 로그인 버튼이 있는 교사 화면으로 즉시 전환됩니다.</div>
+      </div>
+    </div>
+
+    <div class="footer-actions">
+      <a href="/" class="btn-home">🗺️ 메인 화면으로 돌아가기</a>
+      <span class="copyright">문의: gogh999@gmail.com · powered by sota</span>
+    </div>
+  </div>
+</body>
+</html>

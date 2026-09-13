@@ -3,7 +3,7 @@ import { X, LogOut } from 'lucide-react';
 import { signInWithGoogle, signOutUser } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
-export default function LoginModal({ user, userRole, setUserRole, onClose }) {
+export default function LoginModal({ user, userRole, setUserRole, onClose, onLogout }) {
   const handleGoogleLogin = async () => {
     sound.playClick();
     localStorage.setItem('geo_user_role', 'teacher');
@@ -13,13 +13,18 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
 
   const handleLogout = async () => {
     sound.playClick();
-    await signOutUser();
-    localStorage.removeItem('geo_user_role');
-    localStorage.removeItem('geo_student_user');
     try {
       window.history.replaceState(null, '', window.location.pathname);
     } catch (e) {}
-    setUserRole('student');
+    
+    if (onLogout) {
+      await onLogout();
+    } else {
+      await signOutUser();
+      localStorage.removeItem('geo_student_user');
+      localStorage.setItem('geo_user_role', 'teacher');
+      setUserRole?.('teacher');
+    }
     if (onClose) onClose();
   };
 
@@ -220,15 +225,36 @@ export default function LoginModal({ user, userRole, setUserRole, onClose }) {
                 gap: '1.2rem'
               }}
             >
-              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="/privacy.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+              >
                 개인정보처리방침
               </a>
               <span>·</span>
-              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="/terms.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+              >
                 사용약관
               </a>
               <span>·</span>
-              <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="/help.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#1ed760'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#b3b3b3'}
+              >
                 도움말
               </a>
             </div>
