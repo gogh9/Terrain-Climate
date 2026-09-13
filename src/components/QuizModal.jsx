@@ -11,7 +11,8 @@ export default function QuizModal({
   isAlreadyCompleted,
   previousAnswer,
   user,
-  studentUser
+  studentUser,
+  sessionId = '1'
 }) {
   const [activeTab, setActiveTab] = useState('quiz');
   const [studentName, setStudentName] = useState(() => {
@@ -88,6 +89,7 @@ export default function QuizModal({
       });
       onComplete(location.id, { name: location.name, feature: inputFeature });
       saveQuizSubmission({
+        sessionId: String(sessionId || '1'),
         locationId: location.id,
         locationTitle: location.name,
         studentName: effectiveStudentName,

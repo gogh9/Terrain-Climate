@@ -101,11 +101,19 @@ export default function App() {
     return LOCATION_DATA;
   }, [activeCategoryFilter]);
 
-  // Completed IDs & Typed Answers
+  // Determine effective session ID
+  const effectiveSessionId = currentSession?.id || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session') : null) || '1';
+
+  // Completed IDs & Typed Answers isolated per session
   const [completedIds, setCompletedIds] = useState(() => {
     try {
-      const saved = localStorage.getItem('geo_completed_ids');
-      return saved ? JSON.parse(saved) : [];
+      const saved = localStorage.getItem(`geo_completed_ids_${effectiveSessionId}`);
+      if (saved) return JSON.parse(saved);
+      if (effectiveSessionId === '1') {
+        const legacy = localStorage.getItem('geo_completed_ids');
+        return legacy ? JSON.parse(legacy) : [];
+      }
+      return [];
     } catch {
       return [];
     }
@@ -113,8 +121,13 @@ export default function App() {
 
   const [userAnswers, setUserAnswers] = useState(() => {
     try {
-      const saved = localStorage.getItem('geo_user_answers');
-      return saved ? JSON.parse(saved) : {};
+      const saved = localStorage.getItem(`geo_user_answers_${effectiveSessionId}`);
+      if (saved) return JSON.parse(saved);
+      if (effectiveSessionId === '1') {
+        const legacy = localStorage.getItem('geo_user_answers');
+        return legacy ? JSON.parse(legacy) : {};
+      }
+      return {};
     } catch {
       return {};
     }
@@ -125,15 +138,28 @@ export default function App() {
   const [showBadges, setShowBadges] = useState(false);
   const [showTeacherDashboard, setShowTeacherDashboard] = useState(false);
 
-  // Save progress to LocalStorage
+  // Reload progress when effectiveSessionId changes
   useEffect(() => {
     try {
-      localStorage.setItem('geo_completed_ids', JSON.stringify(completedIds));
-      localStorage.setItem('geo_user_answers', JSON.stringify(userAnswers));
+      const savedIds = localStorage.getItem(`geo_completed_ids_${effectiveSessionId}`);
+      setCompletedIds(savedIds ? JSON.parse(savedIds) : (effectiveSessionId === '1' && localStorage.getItem('geo_completed_ids') ? JSON.parse(localStorage.getItem('geo_completed_ids')) : []));
+
+      const savedAnswers = localStorage.getItem(`geo_user_answers_${effectiveSessionId}`);
+      setUserAnswers(savedAnswers ? JSON.parse(savedAnswers) : (effectiveSessionId === '1' && localStorage.getItem('geo_user_answers') ? JSON.parse(localStorage.getItem('geo_user_answers')) : {}));
+    } catch (e) {
+      console.warn('Session progress load error', e);
+    }
+  }, [effectiveSessionId]);
+
+  // Save progress to LocalStorage per session
+  useEffect(() => {
+    try {
+      localStorage.setItem(`geo_completed_ids_${effectiveSessionId}`, JSON.stringify(completedIds));
+      localStorage.setItem(`geo_user_answers_${effectiveSessionId}`, JSON.stringify(userAnswers));
     } catch (e) {
       console.warn('LocalStorage save error', e);
     }
-  }, [completedIds, userAnswers]);
+  }, [completedIds, userAnswers, effectiveSessionId]);
 
   // Complete Location Handler
   const handleCompleteLocation = (id, answerObj) => {
@@ -267,6 +293,7 @@ export default function App() {
           previousAnswer={userAnswers[selectedLocation.id]}
           user={user}
           studentUser={studentUser}
+          sessionId={effectiveSessionId}
         />
       )}
 

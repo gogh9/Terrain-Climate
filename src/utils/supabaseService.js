@@ -5,6 +5,7 @@ import { supabase } from '../supabase';
  * Table name: `quiz_submissions`
  */
 export async function saveQuizSubmission({
+  sessionId = '1',
   locationId,
   locationTitle,
   studentName = '익명 학생',
@@ -14,6 +15,7 @@ export async function saveQuizSubmission({
 }) {
   const newSubmission = {
     id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+    session_id: String(sessionId || '1'),
     location_id: locationId,
     location_title: locationTitle,
     student_name: studentName,
@@ -33,27 +35,53 @@ export async function saveQuizSubmission({
   }
 
   try {
-    const { data, error } = await supabase
+    // 1st attempt: insert with session_id
+    const payloadWithSession = {
+      session_id: String(sessionId || '1'),
+      location_id: locationId,
+      location_title: locationTitle,
+      student_name: studentName,
+      answer_name: answerName,
+      answer_feature: answerFeature,
+      score: score,
+      created_at: newSubmission.created_at
+    };
+
+    let { data, error } = await supabase
       .from('quiz_submissions')
-      .insert([
-        {
-          location_id: locationId,
-          location_title: locationTitle,
-          student_name: studentName,
-          answer_name: answerName,
-          answer_feature: answerFeature,
-          score: score,
-          created_at: newSubmission.created_at
-        }
-      ])
+      .insert([payloadWithSession])
       .select();
+
+    // Fallback if Supabase schema does not yet have session_id column
+    if (error && (error.message?.includes('session_id') || error.code === 'PGRST204')) {
+      console.warn('Supabase에 session_id 컬럼이 없어 제외 후 저장 시도:', error.message);
+      const payloadWithoutSession = {
+        location_id: locationId,
+        location_title: locationTitle,
+        student_name: studentName,
+        answer_name: answerName,
+        answer_feature: answerFeature,
+        score: score,
+        created_at: newSubmission.created_at
+      };
+      const retry = await supabase
+        .from('quiz_submissions')
+        .insert([payloadWithoutSession])
+        .select();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.warn('Supabase 저장 중 주의:', error.message);
       return { success: true, localOnly: true, data: [newSubmission] };
     }
 
-    return { success: true, data: data || [newSubmission] };
+    const resultData = (data && data.length > 0)
+      ? data.map(d => ({ ...newSubmission, ...d, session_id: String(d.session_id || sessionId || '1') }))
+      : [newSubmission];
+
+    return { success: true, data: resultData };
   } catch (err) {
     console.error('Supabase 연동 에러:', err);
     return { success: true, localOnly: true, data: [newSubmission] };
@@ -85,16 +113,28 @@ export async function fetchAllSubmissions(limit = 500) {
     localData = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
   } catch (e) {}
 
+  // Map local items by key to preserve session_id if remote missed it
+  const localMap = new Map();
+  for (const item of localData) {
+    const key = `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}`;
+    localMap.set(key, item);
+  }
+
   // Merge unique by comparing location_id + student_name + created_at
   const seen = new Set();
   const merged = [];
 
-  // Prefer remoteData first
+  // Prefer remoteData first, enriching session_id from local if missing
   for (const item of remoteData) {
     const key = `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}`;
     if (!seen.has(key)) {
       seen.add(key);
-      merged.push(item);
+      const localMatch = localMap.get(key);
+      const enrichedItem = {
+        ...item,
+        session_id: item.session_id || localMatch?.session_id || '1'
+      };
+      merged.push(enrichedItem);
     }
   }
 
@@ -103,7 +143,7 @@ export async function fetchAllSubmissions(limit = 500) {
     const key = `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}`;
     if (!seen.has(key)) {
       seen.add(key);
-      merged.push(item);
+      merged.push({ ...item, session_id: item.session_id || '1' });
     }
   }
 

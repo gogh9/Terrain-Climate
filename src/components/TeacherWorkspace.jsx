@@ -214,7 +214,15 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
   const handleResetSession = async (sessionId) => {
     if (!window.confirm('이 지도의 수집된 모든 데이터 제출을 초기화하시겠습니까?')) return;
     sound.playClick();
+    const toDelete = submissions.filter(sub => {
+      if (sub.session_id) return String(sub.session_id) === String(sessionId);
+      return String(sessionId) === '1';
+    });
+    for (const s of toDelete) {
+      await deleteSubmission(s.id);
+    }
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, accessCount: 0 } : s));
+    await loadSubmissions();
     alert('초기화되었습니다.');
   };
 
@@ -237,25 +245,39 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     return sessions.find(s => s.id === activeSessionId) || sessions[0];
   }, [sessions, activeSessionId]);
 
+  // Submissions filtered strictly for the Active Session
+  const sessionSubmissions = useMemo(() => {
+    return submissions.filter(sub => {
+      if (sub.session_id) return String(sub.session_id) === String(activeSessionId);
+      // Legacy submissions without session_id are assigned to session '1'
+      return String(activeSessionId) === '1';
+    });
+  }, [submissions, activeSessionId]);
+
   // Columns for Active Session
   const activeColumns = useMemo(() => {
-    return getColumnsForSession(activeSession, submissions);
-  }, [activeSession, submissions]);
+    return getColumnsForSession(activeSession, sessionSubmissions);
+  }, [activeSession, sessionSubmissions]);
 
   // Excel (.xls SpreadsheetML) Export with centering, proper widths, and student order
   const handleExportExcel = (session) => {
     sound.playClick();
-    if (submissions.length === 0) {
-      alert('저장할 제출 데이터가 없습니다.');
+    const targetSession = session || activeSession;
+    const targetSubmissions = submissions.filter(sub => {
+      if (sub.session_id) return String(sub.session_id) === String(targetSession.id);
+      return String(targetSession.id) === '1';
+    });
+
+    if (targetSubmissions.length === 0) {
+      alert(`'${targetSession.title}' 지도에 저장된 제출 데이터가 없습니다.`);
       return;
     }
 
-    const targetSession = session || activeSession;
-    const columns = getColumnsForSession(targetSession, submissions);
+    const columns = getColumnsForSession(targetSession, targetSubmissions);
 
     // Group submissions by student name
     const studentsMap = {};
-    submissions.forEach(sub => {
+    targetSubmissions.forEach(sub => {
       const rawName = sub.student_name || '익명 학생';
       if (!studentsMap[rawName]) {
         studentsMap[rawName] = {};
@@ -388,26 +410,26 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
     };
   };
 
-  // Group Submissions By Student Name
+  // Group Submissions By Student Name (Filtered for Active Session)
   const submissionsByStudent = useMemo(() => {
     const groups = {};
-    submissions.forEach(sub => {
+    sessionSubmissions.forEach(sub => {
       const name = sub.student_name || '익명 학생';
       if (!groups[name]) groups[name] = [];
       groups[name].push(sub);
     });
     return groups;
-  }, [submissions]);
+  }, [sessionSubmissions]);
 
-  // Unique Student Names sorted by student number
+  // Unique Student Names sorted by student number (Filtered for Active Session)
   const studentNames = useMemo(() => {
     return Object.keys(submissionsByStudent).sort(compareStudents);
   }, [submissionsByStudent]);
 
-  // Student Matrix Map: { [studentName]: { [locationTitle]: submission } }
+  // Student Matrix Map: { [studentName]: { [locationTitle]: submission } } (Filtered for Active Session)
   const studentMatrixMap = useMemo(() => {
     const map = {};
-    submissions.forEach(sub => {
+    sessionSubmissions.forEach(sub => {
       const raw = sub.student_name || '익명 학생';
       if (!map[raw]) map[raw] = {};
       const title = sub.location_title || sub.answer_name;
@@ -416,7 +438,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       }
     });
     return map;
-  }, [submissions]);
+  }, [sessionSubmissions]);
 
   // Sorted Student Names for Matrix View
   const sortedMatrixStudentNames = useMemo(() => {
@@ -536,6 +558,10 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
       >
         {sessions.map(session => {
           const isSelected = activeSessionId === session.id;
+          const sessionSubCount = submissions.filter(sub => {
+            if (sub.session_id) return String(sub.session_id) === String(session.id);
+            return String(session.id) === '1';
+          }).length;
 
           return (
             <div
@@ -560,8 +586,13 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                     {session.title}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: '#1ed760', marginTop: '4px', fontWeight: 700 }}>
-                    접속 횟수 (학생): <strong style={{ color: '#1ed760' }}>{session.accessCount}회</strong>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#1ed760', fontWeight: 700 }}>
+                      접속 횟수 (학생): <strong style={{ color: '#1ed760' }}>{session.accessCount}회</strong>
+                    </span>
+                    <span style={{ fontSize: '0.82rem', color: '#b3b3b3', fontWeight: 600 }}>
+                      제출 데이터: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong>
+                    </span>
                   </div>
                 </div>
 
@@ -765,11 +796,11 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
 
 
         {/* Content Body: Empty State or Horizontal Matrix */}
-        {submissions.length === 0 ? (
+        {sessionSubmissions.length === 0 ? (
           <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#71717a', background: '#181818', borderRadius: '16px', border: '1px solid #282828' }}>
             <FileText size={32} style={{ margin: '0 auto 10px auto', display: 'block', opacity: 0.5 }} />
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#b3b3b3' }}>
-              아직 제출된 학생 학습 기록이 없습니다. 학생들이 지도를 탐험하며 작성하면 여기에 실시간으로 표시됩니다.
+              이 지도('{activeSession?.title || '선택된 지도'}')에 제출된 학생 학습 기록이 없습니다. 학생들이 지도를 탐험하며 작성하면 여기에 실시간으로 표시됩니다.
             </div>
           </div>
         ) : (
