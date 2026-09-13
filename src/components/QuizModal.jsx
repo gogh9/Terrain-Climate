@@ -4,6 +4,23 @@ import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
 import { saveQuizSubmission } from '../utils/supabaseService';
 
+export const LANDFORM_CHOICES = [
+  { label: '산', icon: '⛰️' },
+  { label: '사막', icon: '🏜️' },
+  { label: '초원', icon: '🌾' },
+  { label: '하천', icon: '🌊' },
+  { label: '해안', icon: '🏖️' }
+];
+
+export const CLIMATE_CHOICES = [
+  { label: '열대 기후', icon: '🌴' },
+  { label: '건조 기후', icon: '🏜️' },
+  { label: '온대 기후', icon: '🌾' },
+  { label: '냉대 기후', icon: '🌲' },
+  { label: '한대 기후', icon: '❄️' },
+  { label: '고산 기후', icon: '🏔️' }
+];
+
 export default function QuizModal({
   location,
   onClose,
@@ -29,7 +46,21 @@ export default function QuizModal({
     if (user?.email) return user.email.split('@')[0];
     return localStorage.getItem('geo_last_student_name') || '';
   });
-  const [inputName, setInputName] = useState(previousAnswer?.name || '');
+  const [inputName, setInputName] = useState(() => {
+    const prev = previousAnswer?.name || '';
+    if (!prev) return '';
+    if (location.category === 'climate') {
+      const found = CLIMATE_CHOICES.find(c => prev.includes(c.label.slice(0, 2)));
+      return found ? found.label : prev;
+    } else {
+      if (prev.includes('산') || prev.includes('고원')) return '산';
+      if (prev.includes('하천') || prev.includes('강') || prev.includes('호수') || prev.includes('폭포')) return '하천';
+      if (prev.includes('해안') || prev.includes('해변')) return '해안';
+      if (prev.includes('사막')) return '사막';
+      if (prev.includes('초원')) return '초원';
+      return prev;
+    }
+  });
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
   const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100, message: '🎉 이미 학습 확인을 완료한 지점입니다.' } : null);
   const [showHint, setShowHint] = useState(false);
@@ -74,8 +105,8 @@ export default function QuizModal({
 
     if (!cleanName) {
       alert(location.category === 'climate' 
-        ? '이 지역에 나타나는 기후를 입력해 주세요!' 
-        : '이 지역에서 볼 수 있는 지형을 입력해 주세요!'
+        ? '이 지역에 나타나는 기후를 선택해 주세요!' 
+        : '이 지역에서 볼 수 있는 지형을 선택해 주세요!'
       );
       return;
     }
@@ -93,16 +124,44 @@ export default function QuizModal({
     sound.playClick();
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
-    // 1. Name Keywords Check (지형 or 기후 명칭 검사)
-    const nameKeywords = [
-      ...(location.nameKeywords || []),
-      ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
-    ];
-    const isNameCorrect = nameKeywords.some(kw => {
-      const normKw = kw.replace(/\s+/g, '').toLowerCase();
-      const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
-      return normInput.includes(normKw) || normKw.includes(normInput);
-    });
+    // 1. Name Check (지형 or 기후 선택지 정답 검사)
+    let isNameCorrect = false;
+    if (location.category === 'climate') {
+      if (location.subType && cleanName === location.subType) {
+        isNameCorrect = true;
+      } else {
+        const nameKeywords = [
+          ...(location.nameKeywords || []),
+          ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
+        ];
+        isNameCorrect = nameKeywords.some(kw => {
+          const normKw = kw.replace(/\s+/g, '').toLowerCase();
+          const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
+          return normInput.includes(normKw) || normKw.includes(normInput);
+        });
+      }
+    } else {
+      let expected = '산';
+      if (location.subType === '산지') expected = '산';
+      else if (location.subType === '하천') expected = '하천';
+      else if (location.subType === '해안') expected = '해안';
+      else if (location.subType === '사막') expected = '사막';
+      else if (location.subType === '초원') expected = '초원';
+
+      if (cleanName === expected) {
+        isNameCorrect = true;
+      } else {
+        const nameKeywords = [
+          ...(location.nameKeywords || []),
+          ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
+        ];
+        isNameCorrect = nameKeywords.some(kw => {
+          const normKw = kw.replace(/\s+/g, '').toLowerCase();
+          const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
+          return normInput.includes(normKw) || normKw.includes(normInput);
+        });
+      }
+    }
 
     // 2. Feature Keywords Check
     const matchedFeatureKeywords = location.featureKeywords ? location.featureKeywords.filter(kw => cleanFeature.includes(kw)) : [];
@@ -443,29 +502,61 @@ export default function QuizModal({
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
-                {/* Input 1: Landform or Climate */}
+                {/* Input 1: Landform or Climate (Clickable Choices) */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
-                    {location.category === 'climate' ? '이 지역에 나타나는 기후를 쓰시오:' : '이 지역에서 볼 수 있는 지형을 쓰시오:'}
+                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>
+                    {location.category === 'climate' ? '이 지역에 나타나는 기후를 선택하세요:' : '이 지역에서 볼 수 있는 지형을 선택하세요:'}
                   </label>
-                  <input
-                    type="text"
-                    value={inputName}
-                    onChange={(e) => setInputName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.8rem 1.2rem',
-                      background: '#1f1f1f',
-                      color: '#ffffff',
-                      borderRadius: '12px',
-                      boxShadow: 'rgb(18, 18, 18) 0px 1px 0px, rgb(124, 124, 124) 0px 0px 0px 1px inset',
-                      border: 'none',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {(location.category === 'climate' ? CLIMATE_CHOICES : LANDFORM_CHOICES).map((opt) => {
+                      const isSelected = inputName === opt.label;
+                      return (
+                        <button
+                          key={opt.label}
+                          type="button"
+                          onClick={() => {
+                            sound.playClick();
+                            setInputName(opt.label);
+                          }}
+                          style={{
+                            flex: location.category === 'climate' ? '1 1 calc(33.333% - 8px)' : '1 1 calc(20% - 8px)',
+                            minWidth: location.category === 'climate' ? '110px' : '65px',
+                            padding: '0.75rem 0.5rem',
+                            background: isSelected ? '#1ed760' : '#1f1f1f',
+                            color: isSelected ? '#000000' : '#ffffff',
+                            border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
+                            borderRadius: '12px',
+                            fontSize: '0.92rem',
+                            fontWeight: isSelected ? 800 : 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
+                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = '#1ed760';
+                              e.currentTarget.style.background = '#282828';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = '#404040';
+                              e.currentTarget.style.background = '#1f1f1f';
+                            }
+                          }}
+                        >
+                          <span style={{ fontSize: '1.1rem' }}>{opt.icon}</span>
+                          <span>{opt.label}</span>
+                          {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Input 2: Characteristic Description */}
