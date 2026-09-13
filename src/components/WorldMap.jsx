@@ -116,36 +116,6 @@ export default function WorldMap({
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div id="leaflet-world-map" style={{ width: '100%', height: '100%' }} />
-
-      {/* Map Legend Overlay */}
-      <div
-        className="glass-panel"
-        style={{
-          position: 'absolute',
-          bottom: '24px',
-          left: '24px',
-          zIndex: 1000,
-          padding: '10px 16px',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          color: '#e2e8f0',
-          boxShadow: '0 8px 16px rgba(0,0,0,0.4)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '16px' }}>🏔️</span> 지형 지점
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '16px' }}>☀️</span> 기후 지점
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></span> 완료된 지점
-        </div>
-      </div>
     </div>
   );
 }

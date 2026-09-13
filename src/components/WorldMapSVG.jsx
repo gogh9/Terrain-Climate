@@ -431,42 +431,6 @@ export default function WorldMapSVG({
         </div>
       ))}
 
-      {/* Map Information & Legend Overlay (하단 좌측 정보 배지) */}
-      <div
-        className="glass-panel"
-        style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          zIndex: 1000,
-          padding: '10px 16px',
-          borderRadius: '14px',
-          background: 'rgba(15, 23, 42, 0.82)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          fontSize: '0.82rem',
-          fontWeight: 600,
-          color: '#e2e8f0',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          userSelect: 'none'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '15px' }}>🏔️</span> 지형 지점
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '15px' }}>☀️</span> 기후 지점
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', background: '#10b981' }}></span> 완료 지점
-        </div>
-        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.18)', paddingLeft: '12px', color: '#94a3b8', fontSize: '0.75rem' }}>
-          🌍 이퀄 어스 지형도 (대륙 면적 왜곡 최소화)
-        </div>
-      </div>
 
       {/* Map Control Floating Toolbar (확대/축소 및 초기화) */}
       <div
