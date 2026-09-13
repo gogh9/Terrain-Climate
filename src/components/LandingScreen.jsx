@@ -327,7 +327,7 @@ export default function LandingScreen({
               }}
             >
               <LogIn size={18} />
-              <span>백지도 탐험 시작하기</span>
+              <span>세계 지형도 탐험 시작하기</span>
             </button>
           </form>
         ) : (

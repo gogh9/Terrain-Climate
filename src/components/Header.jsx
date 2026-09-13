@@ -48,7 +48,7 @@ export default function Header({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                6학년 사회 세계 지형·기후 백지도 탐험
+                6학년 사회 세계 지형·기후 탐험 (지형도)
               </h1>
               <span
                 style={{
@@ -67,7 +67,7 @@ export default function Header({
               </span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#b3b3b3', marginTop: '2px' }}>
-              백지도의 지점을 클릭하여 해당 지역의 지형과 기후 특징을 확인하고 학습해 보세요.
+              세계 지형도의 지점을 클릭하여 해당 지역의 지형과 기후 특징을 확인하고 학습해 보세요.
             </p>
           </div>
         </div>

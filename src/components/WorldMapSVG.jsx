@@ -3,76 +3,8 @@ import * as d3Geo from 'd3-geo';
 import * as topojson from 'topojson-client';
 import worldDataRaw from '../data/worldData.json';
 import { sound } from '../utils/audio';
-import { ZoomIn, ZoomOut, RotateCcw, Search, Globe, X } from 'lucide-react';
-import { getCountryByFeature, searchCountries, COUNTRY_LIST } from '../data/countryData';
-
-const CONTINENT_VIEWS = {
-  'ALL': { center: [0, 15], scale: 153 },
-  '아시아': { center: [95, 32], scale: 320 },
-  '유럽': { center: [18, 50], scale: 480 },
-  '아프리카': { center: [20, 2], scale: 300 },
-  '북아메리카': { center: [-100, 42], scale: 280 },
-  '남아메리카': { center: [-60, -22], scale: 290 },
-  '오세아니아': { center: [135, -25], scale: 340 },
-  '극지방': { center: [0, 75], scale: 260 }
-};
-
-const COUNTRY_TO_LOCATION_MAP = {
-  'MN': 'landform_mongolia',
-  'NP': 'climate_everest',
-  'CN': 'climate_taklamakan',
-  'KR': 'landform_mongolia',
-  'JP': 'landform_mongolia',
-  'KP': 'landform_mongolia',
-  'IN': 'climate_everest',
-  'FR': 'landform_montblanc',
-  'CH': 'landform_montblanc',
-  'IT': 'landform_montblanc',
-  'DE': 'landform_montblanc',
-  'GB': 'landform_montblanc',
-  'NO': 'climate_tundra',
-  'SE': 'climate_tundra',
-  'FI': 'climate_tundra',
-  'US': 'landform_colorado',
-  'CA': 'landform_colorado',
-  'MX': 'landform_cancun',
-  'AR': 'landform_perito',
-  'CL': 'climate_atacama',
-  'BR': 'climate_amazon',
-  'EC': 'climate_galapagos',
-  'PE': 'climate_amazon',
-  'CO': 'climate_amazon',
-  'KE': 'climate_savanna',
-  'TZ': 'climate_savanna',
-  'DZ': 'landform_sahara',
-  'EG': 'landform_sahara',
-  'LY': 'landform_sahara',
-  'MA': 'landform_sahara',
-  'SD': 'landform_sahara',
-  'TD': 'landform_sahara',
-  'NE': 'landform_sahara',
-  'ML': 'landform_sahara',
-  'ZA': 'climate_savanna',
-  'AU': 'landform_outback',
-  'NZ': 'landform_outback',
-  'AQ': 'climate_antarctica'
-};
-
-function findBestLocationForCountry(countryData, locations) {
-  if (!countryData || !locations || locations.length === 0) return locations[0];
-  const locId = COUNTRY_TO_LOCATION_MAP[countryData.code];
-  if (locId) {
-    const found = locations.find(l => l.id === locId);
-    if (found) return found;
-  }
-  const nameMatch = locations.find(loc => {
-    if (loc.name.includes(countryData.nameKo)) return true;
-    if (countryData.aliases && countryData.aliases.some(alias => loc.name.includes(alias))) return true;
-    return false;
-  });
-  if (nameMatch) return nameMatch;
-  return locations[0];
-}
+import { ZoomIn, ZoomOut, RotateCcw, MapPin, Layers } from 'lucide-react';
+import { getCountryByFeature, searchCountries } from '../data/countryData';
 
 export default function WorldMapSVG({
   locations = [],
@@ -81,7 +13,6 @@ export default function WorldMapSVG({
   continentFilter = 'ALL'
 }) {
   const containerRef = useRef(null);
-  const [mapTheme, setMapTheme] = useState('white'); // 'white' | 'coral'
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -92,10 +23,8 @@ export default function WorldMapSVG({
   const [hoveredLocation, setHoveredLocation] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-  // Country search state
-  const [countrySearch, setCountrySearch] = useState('');
+  // Country selection state
   const [selectedCountry, setSelectedCountry] = useState(null);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Safe TopoJSON Features extraction
   const countries = useMemo(() => {
@@ -111,25 +40,23 @@ export default function WorldMapSVG({
     }
   }, []);
 
-  // View configuration
-  const viewConfig = CONTINENT_VIEWS[continentFilter] || CONTINENT_VIEWS['ALL'];
-  
+  // Equal Earth Projection (대륙 면적 왜곡이 적은 이퀄 어스 도법)
+  // 1920 x 939 해상도의 Equal Earth Physical Map과 1:1 완벽 정합
   const projection = useMemo(() => {
     try {
-      return d3Geo.geoEquirectangular()
-        .scale(viewConfig.scale)
-        .center(viewConfig.center)
-        .translate([480, 260]);
+      return d3Geo.geoEqualEarth()
+        .scale(352.6)
+        .translate([960, 470]);
     } catch (e) {
-      return d3Geo.geoEquirectangular().scale(153).translate([480, 260]);
+      return d3Geo.geoEqualEarth().scale(352.6).translate([960, 470]);
     }
-  }, [viewConfig]);
+  }, []);
 
   const pathGenerator = useMemo(() => {
     return d3Geo.geoPath().projection(projection);
   }, [projection]);
 
-  // Graticule grid lines
+  // Graticule grid lines (위도/경도선)
   const graticules = useMemo(() => {
     try {
       const graticuleGen = d3Geo.geoGraticule10();
@@ -144,12 +71,6 @@ export default function WorldMapSVG({
     if (!hoveredFeature) return null;
     return getCountryByFeature(hoveredFeature);
   }, [hoveredFeature]);
-
-  // Country search results
-  const searchResults = useMemo(() => {
-    if (!countrySearch.trim()) return [];
-    return searchCountries(countrySearch).slice(0, 8);
-  }, [countrySearch]);
 
   const isDraggingRef = useRef(false);
   const dragStartPosRef = useRef({ x: 0, y: 0 });
@@ -217,7 +138,6 @@ export default function WorldMapSVG({
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
     setSelectedCountry(null);
-    setCountrySearch('');
   };
 
   // Reset zoom on continent change
@@ -225,13 +145,6 @@ export default function WorldMapSVG({
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
   }, [continentFilter]);
-
-  // Theme Styles
-  const isWhite = mapTheme === 'white';
-  const landFill = isWhite ? '#ffffff' : '#ff5c5c';
-  const landStroke = isWhite ? '#334155' : '#d32f2f';
-  const landHover = isWhite ? '#38bdf8' : '#e879f9';
-  const landSelect = '#f59e0b';
 
   return (
     <div
@@ -244,7 +157,7 @@ export default function WorldMapSVG({
         position: 'relative',
         width: '100%',
         height: '100%',
-        background: '#121212',
+        background: '#0d1117',
         overflow: 'hidden',
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none'
@@ -252,7 +165,7 @@ export default function WorldMapSVG({
     >
       {/* SVG Canvas Map */}
       <svg
-        viewBox="0 0 960 520"
+        viewBox="0 0 1920 939"
         style={{
           width: '100%',
           height: '100%',
@@ -262,63 +175,60 @@ export default function WorldMapSVG({
         }}
       >
         <defs>
-          {/* Radial Ocean Gradient (Spotify Near Black Theme) */}
-          <radialGradient id="ocean-gradient" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#1a1a1a" />
-            <stop offset="100%" stopColor="#121212" />
-          </radialGradient>
-
           {/* Glow Filter for Pins */}
           <filter id="pin-glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
 
-          {/* Spotify Green Flag Gradients */}
+          {/* Location Flag Gradients */}
           <linearGradient id="red-flag-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#f3727f" />
+            <stop offset="0%" stopColor="#f87171" />
             <stop offset="100%" stopColor="#dc2626" />
           </linearGradient>
           <linearGradient id="green-flag-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#1ed760" />
-            <stop offset="100%" stopColor="#1db954" />
+            <stop offset="0%" stopColor="#34d399" />
+            <stop offset="100%" stopColor="#059669" />
           </linearGradient>
+
           {/* Map Frame Clip for Seamless Rounded Border Fitting */}
           <clipPath id="map-frame-clip">
             <rect
-              x="12"
-              y="12"
-              width="936"
-              height="496"
+              x="6"
+              y="6"
+              width="1908"
+              height="927"
               rx="24"
               ry="24"
             />
           </clipPath>
         </defs>
 
-        {/* Clipped Map Content (Ocean, Graticules, Countries) */}
+        {/* Clipped Map Content (Equal Earth Topographic Map & Vectors) */}
         <g clipPath="url(#map-frame-clip)">
-          {/* Ocean Background */}
-          <rect
+          {/* 1. Open-Source Equal Earth Physical Topographic Map (오픈소스 지형도) */}
+          <image
+            href="/equal_earth_physical.jpg"
             x="0"
             y="0"
-            width="960"
-            height="520"
-            fill="url(#ocean-gradient)"
+            width="1920"
+            height="939"
+            preserveAspectRatio="none"
           />
 
-          {/* Latitude & Longitude Graticule Lines */}
+          {/* 2. Latitude & Longitude Graticule Lines (은은한 경위도망) */}
           {graticules && (
             <path
               d={graticules}
               fill="none"
-              stroke="rgba(255, 255, 255, 0.08)"
-              strokeWidth="0.8"
-              strokeDasharray="3,3"
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth="1"
+              strokeDasharray="4,4"
+              pointerEvents="none"
             />
           )}
 
-          {/* Country Polygons (Crisp White Map) */}
+          {/* 3. Country Polygons (국가 경계선 및 호버 하이라이트 - 지형을 가리지 않도록 투명 처리) */}
           <g>
             {countries.map((feature, i) => {
               const countryPath = pathGenerator(feature);
@@ -328,17 +238,17 @@ export default function WorldMapSVG({
               const isHovered = hoveredFeature?.id === feature.id || (hoveredFeature && hoveredFeature.properties?.name === feature.properties?.name);
               const isSelected = selectedCountry && countryData && (selectedCountry.code === countryData.code || selectedCountry.id === countryData.id);
 
-              let fillColor = '#ffffff';
-              let strokeColor = '#94a3b8';
+              let fillColor = 'transparent';
+              let strokeColor = 'rgba(255, 255, 255, 0.22)';
               let strokeWidth = '0.7';
 
               if (isSelected) {
-                fillColor = '#86efac';
-                strokeColor = '#16a34a';
-                strokeWidth = '1.8';
+                fillColor = 'rgba(52, 211, 153, 0.3)';
+                strokeColor = '#10b981';
+                strokeWidth = '2';
               } else if (isHovered) {
-                fillColor = '#bae6fd';
-                strokeColor = '#0284c7';
+                fillColor = 'rgba(56, 189, 248, 0.25)';
+                strokeColor = '#38bdf8';
                 strokeWidth = '1.6';
               }
 
@@ -350,7 +260,8 @@ export default function WorldMapSVG({
                   stroke={strokeColor}
                   strokeWidth={strokeWidth}
                   style={{
-                    transition: 'fill 0.15s ease, stroke 0.15s ease'
+                    transition: 'fill 0.15s ease, stroke 0.15s ease',
+                    cursor: 'pointer'
                   }}
                   onMouseEnter={() => setHoveredFeature(feature)}
                   onMouseLeave={() => setHoveredFeature(null)}
@@ -362,19 +273,19 @@ export default function WorldMapSVG({
 
         {/* Outer Elegant Border Frame */}
         <rect
-          x="12"
-          y="12"
-          width="936"
-          height="496"
+          x="6"
+          y="6"
+          width="1908"
+          height="927"
           rx="24"
           ry="24"
           fill="none"
-          stroke="#282828"
-          strokeWidth="2"
+          stroke="rgba(255, 255, 255, 0.18)"
+          strokeWidth="2.5"
           pointerEvents="none"
         />
 
-        {/* Location Pretty Flag Pin Markers */}
+        {/* 4. Location Interactive Pretty Flag Pin Markers (14개 교과서 지점) */}
         {locations.map(loc => {
           const coords = projection([loc.lng, loc.lat]);
           if (!coords) return null;
@@ -382,7 +293,8 @@ export default function WorldMapSVG({
 
           const isCompleted = completedIds.includes(loc.id);
           const isHovered = hoveredLocation?.id === loc.id;
-          const scaleVal = isHovered ? 1.35 : 1.0;
+          // 1920 viewBox 기준 최적 가독성 배율 (기본 1.85, 호버 2.4)
+          const scaleVal = isHovered ? 2.4 : 1.85;
 
           return (
             <g
@@ -396,7 +308,7 @@ export default function WorldMapSVG({
                 transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
               }}
             >
-              {/* Invisible Hit Area (Ensures 100% click detection) */}
+              {/* Invisible Hit Area (클릭 판정 보장) */}
               <rect
                 x="-24"
                 y="-32"
@@ -405,17 +317,18 @@ export default function WorldMapSVG({
                 fill="rgba(0,0,0,0.001)"
                 style={{ cursor: 'pointer' }}
               />
+
               {/* Outer Pulse Glow at Flag Base */}
               <circle
                 r={isHovered ? 14 : 9}
-                fill={isCompleted ? 'rgba(30, 215, 96, 0.4)' : 'rgba(239, 68, 68, 0.35)'}
+                fill={isCompleted ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.4)'}
                 style={{ transition: 'all 0.2s ease' }}
               />
 
               {/* Base Pin Circle */}
               <circle
                 r="4.5"
-                fill={isCompleted ? '#1ed760' : '#dc2626'}
+                fill={isCompleted ? '#10b981' : '#ef4444'}
                 stroke="#ffffff"
                 strokeWidth="1.5"
                 filter="url(#pin-glow)"
@@ -427,7 +340,7 @@ export default function WorldMapSVG({
                 y1="0"
                 x2="0"
                 y2="-22"
-                stroke={isCompleted ? '#14833b' : '#1e293b'}
+                stroke={isCompleted ? '#065f46' : '#1e293b'}
                 strokeWidth="2"
                 strokeLinecap="round"
               />
@@ -446,7 +359,7 @@ export default function WorldMapSVG({
               <path
                 d="M 0 -22 Q 9 -26 18 -22 Q 9 -17 0 -13 Z"
                 fill={isCompleted ? 'url(#green-flag-grad)' : 'url(#red-flag-grad)'}
-                stroke={isCompleted ? '#14833b' : '#991b1b'}
+                stroke={isCompleted ? '#065f46' : '#991b1b'}
                 strokeWidth="1"
                 filter="url(#pin-glow)"
               />
@@ -471,21 +384,22 @@ export default function WorldMapSVG({
             position: 'absolute',
             left: `${tooltipPos.x + 15}px`,
             top: `${tooltipPos.y - 15}px`,
-            background: '#181818',
-            border: '1px solid #1ed760',
+            background: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid #10b981',
             color: 'white',
             padding: '8px 14px',
             borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.8)',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.7)',
             pointerEvents: 'none',
             zIndex: 1200,
             fontFamily: 'Noto Sans KR, sans-serif'
           }}
         >
-          <div style={{ fontSize: '0.72rem', color: '#1ed760', fontWeight: 700 }}>
+          <div style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 700 }}>
             [{hoveredLocation.categoryName}] {hoveredLocation.pageRef}
           </div>
-          <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'white', marginTop: '2px' }}>
+          <div style={{ fontSize: '1rem', fontWeight: 800, color: 'white', marginTop: '2px' }}>
             {hoveredLocation.name}
           </div>
         </div>
@@ -495,12 +409,13 @@ export default function WorldMapSVG({
             position: 'absolute',
             left: `${tooltipPos.x + 15}px`,
             top: `${tooltipPos.y - 15}px`,
-            background: '#181818',
-            border: '1px solid #1ed760',
+            background: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(56, 189, 248, 0.7)',
             color: '#ffffff',
             padding: '6px 14px',
             borderRadius: '9999px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.6)',
             pointerEvents: 'none',
             zIndex: 1200,
             fontFamily: 'Noto Sans KR, sans-serif',
@@ -513,7 +428,44 @@ export default function WorldMapSVG({
         </div>
       ))}
 
-      {/* Map Control Floating Toolbar (Theme Switch & Zoom & Reset) */}
+      {/* Map Information & Legend Overlay (하단 좌측 정보 배지) */}
+      <div
+        className="glass-panel"
+        style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '20px',
+          zIndex: 1000,
+          padding: '10px 16px',
+          borderRadius: '14px',
+          background: 'rgba(15, 23, 42, 0.82)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          fontSize: '0.82rem',
+          fontWeight: 600,
+          color: '#e2e8f0',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          userSelect: 'none'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '15px' }}>🏔️</span> 지형 지점
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '15px' }}>☀️</span> 기후 지점
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ display: 'inline-block', width: '9px', height: '9px', borderRadius: '50%', background: '#10b981' }}></span> 완료 지점
+        </div>
+        <div style={{ borderLeft: '1px solid rgba(255,255,255,0.18)', paddingLeft: '12px', color: '#94a3b8', fontSize: '0.75rem' }}>
+          🌍 이퀄 어스 지형도 (대륙 면적 왜곡 최소화)
+        </div>
+      </div>
+
+      {/* Map Control Floating Toolbar (확대/축소 및 초기화) */}
       <div
         style={{
           position: 'absolute',
@@ -523,8 +475,9 @@ export default function WorldMapSVG({
           flexDirection: 'column',
           gap: '8px',
           padding: '6px',
-          background: '#181818',
-          border: '1px solid #282828',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
           borderRadius: '9999px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
           zIndex: 1000
@@ -549,14 +502,12 @@ export default function WorldMapSVG({
         <button
           className="btn btn-secondary"
           onClick={handleResetView}
-          title="초기화"
+          title="시점 초기화"
           style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
           <RotateCcw size={18} />
         </button>
       </div>
-
     </div>
   );
 }
-

@@ -30,7 +30,7 @@ export default function SummaryNoteModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '1.8rem' }}>📖</span>
               <h2 className="summary-note-title" style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff' }}>
-                6학년 사회 세계 지형, 기후 학습 백지도 요약 노트
+                6학년 사회 세계 지형, 기후 학습 요약 노트
               </h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', flexWrap: 'wrap' }}>

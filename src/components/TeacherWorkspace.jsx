@@ -540,7 +540,7 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
               gap: '6px',
               transition: 'all 0.15s ease'
             }}
-            title="학생 백지도 화면으로 이동"
+            title="학생 지형도 화면으로 이동"
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
           >
