@@ -59,17 +59,15 @@ export default function QuizModal({
   // Evaluate Student Submission
   const handleSubmitQuiz = (e) => {
     e.preventDefault();
-    if (!studentName.trim()) {
-      alert('학생 이름을 입력해 주세요!');
-      return;
-    }
+    const effectiveStudentName = studentUser?.fullName || studentName?.trim() || localStorage.getItem('geo_last_student_name') || '익명 학생';
+
     if (!inputName.trim() || !inputFeature.trim()) {
       alert('지형/기후 명칭과 특징을 모두 입력해 주세요!');
       return;
     }
 
     sound.playClick();
-    localStorage.setItem('geo_last_student_name', studentName.trim());
+    localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
     // 1. Name Check
     const cleanName = inputName.trim().replace(/\s+/g, '');
@@ -99,7 +97,7 @@ export default function QuizModal({
       saveQuizSubmission({
         locationId: location.id,
         locationTitle: location.name,
-        studentName: studentName.trim(),
+        studentName: effectiveStudentName,
         answerName: inputName,
         answerFeature: inputFeature,
         score: 100
@@ -257,26 +255,6 @@ export default function QuizModal({
             {/* TAB 1: Quiz Form */}
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                
-                {/* Student Name Input */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#1ed760', marginBottom: '6px' }}>
-                    👤 학생 이름 (작성자):
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="이름을 입력하세요 (예: 홍길동)"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    className="spotify-input"
-                    style={{
-                      width: '100%',
-                      fontWeight: 700,
-                      color: '#1ed760'
-                    }}
-                  />
-                </div>
-
                 {/* Input 1: Name */}
                 <div>
                   <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>

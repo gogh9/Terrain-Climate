@@ -43,15 +43,15 @@ export default function LandingScreen({
     const cleanName = studentName.trim();
 
     if (!cleanClass) {
-      alert('반을 입력해 주세요! (예: 1)');
+      alert('반을 입력해 주세요!');
       return;
     }
     if (!cleanNum) {
-      alert('출석 번호를 입력해 주세요! (예: 7)');
+      alert('출석 번호를 입력해 주세요!');
       return;
     }
     if (!cleanName) {
-      alert('학생 이름을 입력해 주세요! (예: 홍길동)');
+      alert('학생 이름을 입력해 주세요!');
       return;
     }
 
@@ -178,7 +178,7 @@ export default function LandingScreen({
                   type="number"
                   min="1"
                   max="99"
-                  placeholder="예: 1"
+                  placeholder="반"
                   value={studentClass}
                   onChange={(e) => setStudentClass(e.target.value)}
                   autoFocus
@@ -225,7 +225,7 @@ export default function LandingScreen({
                   type="number"
                   min="1"
                   max="99"
-                  placeholder="예: 7"
+                  placeholder="번호"
                   value={studentNumber}
                   onChange={(e) => setStudentNumber(e.target.value)}
                   style={{
@@ -269,7 +269,7 @@ export default function LandingScreen({
                 </label>
                 <input
                   type="text"
-                  placeholder="예: 홍길동"
+                  placeholder="이름"
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
                   style={{
