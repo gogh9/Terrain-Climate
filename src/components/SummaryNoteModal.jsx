@@ -70,7 +70,10 @@ export default function SummaryNoteModal({
         </div>
 
         {/* Location Summary Cards Grid */}
-        <div className="summary-note-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', gap: '1.25rem' }}>
+        <div
+          className={`summary-note-grid ${locations.length <= 6 ? 'grid-spacious-6' : 'grid-compact-8'}`}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))', gap: '1.25rem' }}
+        >
           {locations.map((loc) => {
             const isCompleted = completedIds.includes(loc.id);
             const ans = userAnswers[loc.id];
