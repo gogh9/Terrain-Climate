@@ -24,3 +24,8 @@ create policy "Allow anonymous insert" on public.quiz_submissions
 drop policy if exists "Allow public read access" on public.quiz_submissions;
 create policy "Allow public read access" on public.quiz_submissions
   for select using (true);
+
+drop policy if exists "Allow delete access" on public.quiz_submissions;
+create policy "Allow delete access" on public.quiz_submissions
+  for delete using (true);
+

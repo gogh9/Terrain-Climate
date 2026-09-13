@@ -92,6 +92,29 @@ export async function saveQuizSubmission({
  * Fetch all student submissions from Supabase and merge with localStorage
  */
 export async function fetchAllSubmissions(limit = 500) {
+  // Load deleted IDs blacklist and session reset timestamps
+  let deletedIds = new Set();
+  try {
+    const list = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    deletedIds = new Set(list.map(String));
+  } catch (e) {}
+
+  const isSubmissionValid = (item) => {
+    if (!item) return false;
+    if (item.id && deletedIds.has(String(item.id))) return false;
+    
+    const sid = String(item.session_id || '1');
+    try {
+      const resetTimeStr = localStorage.getItem(`geo_session_reset_${sid}`);
+      if (resetTimeStr && item.created_at) {
+        if (new Date(item.created_at) <= new Date(resetTimeStr)) {
+          return false;
+        }
+      }
+    } catch (e) {}
+    return true;
+  };
+
   let remoteData = [];
   try {
     const { data, error } = await supabase
@@ -134,7 +157,9 @@ export async function fetchAllSubmissions(limit = 500) {
         ...item,
         session_id: item.session_id || localMatch?.session_id || '1'
       };
-      merged.push(enrichedItem);
+      if (isSubmissionValid(enrichedItem)) {
+        merged.push(enrichedItem);
+      }
     }
   }
 
@@ -143,7 +168,10 @@ export async function fetchAllSubmissions(limit = 500) {
     const key = `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}`;
     if (!seen.has(key)) {
       seen.add(key);
-      merged.push({ ...item, session_id: item.session_id || '1' });
+      const candidate = { ...item, session_id: item.session_id || '1' };
+      if (isSubmissionValid(candidate)) {
+        merged.push(candidate);
+      }
     }
   }
 
@@ -165,15 +193,26 @@ export async function fetchRecentSubmissions(limit = 10) {
  * Delete a submission by ID
  */
 export async function deleteSubmission(id) {
-  // Delete from localStorage
+  const strId = String(id);
+
+  // 1. Add to deleted IDs in localStorage (permanent tombstone)
+  try {
+    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    if (!deletedList.includes(strId)) {
+      deletedList.push(strId);
+      localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+    }
+  } catch (e) {}
+
+  // 2. Delete from localStorage geo_quiz_submissions
   try {
     const local = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
-    const filtered = local.filter(item => item.id !== id);
+    const filtered = local.filter(item => String(item.id) !== strId);
     localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
   } catch (e) {}
 
-  // Delete from Supabase if not a purely local ID
-  if (!String(id).startsWith('local_')) {
+  // 3. Delete from Supabase if not a purely local ID
+  if (!strId.startsWith('local_')) {
     try {
       const { data, error } = await supabase
         .from('quiz_submissions')
@@ -181,14 +220,76 @@ export async function deleteSubmission(id) {
         .eq('id', id);
 
       if (error) {
-        console.warn('Supabase 삭제 실패:', error.message);
-        return { success: true };
+        console.warn('Supabase 삭제 알림:', error.message);
       }
       return { success: true, data };
     } catch (err) {
       console.error('Supabase 삭제 오류:', err);
       return { success: true };
     }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reset all submissions for a specific session
+ */
+export async function resetSessionSubmissions(sessionId, currentSubmissions = []) {
+  const sid = String(sessionId || '1');
+  const nowIso = new Date().toISOString();
+
+  // 1. Record session reset timestamp
+  try {
+    localStorage.setItem(`geo_session_reset_${sid}`, nowIso);
+  } catch (e) {}
+
+  // 2. Add all current matching IDs to deleted blacklist
+  try {
+    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    currentSubmissions.forEach(sub => {
+      const subSid = String(sub.session_id || '1');
+      if (subSid === sid && sub.id) {
+        if (!deletedList.includes(String(sub.id))) {
+          deletedList.push(String(sub.id));
+        }
+      }
+    });
+    localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+  } catch (e) {}
+
+  // 3. Clear local quiz submissions for this session
+  try {
+    const local = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
+    const filtered = local.filter(sub => String(sub.session_id || '1') !== sid);
+    localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
+  } catch (e) {}
+
+  // 4. Clear student map completed state and answers for this session
+  try {
+    localStorage.removeItem(`geo_completed_ids_${sid}`);
+    localStorage.removeItem(`geo_user_answers_${sid}`);
+    if (sid === '1') {
+      localStorage.removeItem('geo_completed_ids');
+      localStorage.removeItem('geo_user_answers');
+    }
+  } catch (e) {}
+
+  // 5. Attempt Supabase delete for this session
+  try {
+    await supabase
+      .from('quiz_submissions')
+      .delete()
+      .eq('session_id', sid);
+
+    if (sid === '1') {
+      await supabase
+        .from('quiz_submissions')
+        .delete()
+        .is('session_id', null);
+    }
+  } catch (err) {
+    console.warn('Supabase session reset info:', err);
   }
 
   return { success: true };

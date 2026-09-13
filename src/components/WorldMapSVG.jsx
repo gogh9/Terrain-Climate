@@ -133,7 +133,10 @@ export default function WorldMapSVG({
     setZoomLevel(prev => Math.min(Math.max(prev * factor, 0.8), 4));
   };
 
-  const handleResetView = () => {
+  const handleResetView = (e) => {
+    if (e) {
+      e.stopPropagation();
+    }
     sound.playClick();
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
@@ -485,7 +488,9 @@ export default function WorldMapSVG({
       >
         <button
           className="btn btn-secondary"
-          onClick={() => handleZoom(1.25)}
+          onClick={(e) => { e.stopPropagation(); handleZoom(1.25); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           title="확대"
           style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
@@ -493,7 +498,9 @@ export default function WorldMapSVG({
         </button>
         <button
           className="btn btn-secondary"
-          onClick={() => handleZoom(0.8)}
+          onClick={(e) => { e.stopPropagation(); handleZoom(0.8); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           title="축소"
           style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >
@@ -501,7 +508,9 @@ export default function WorldMapSVG({
         </button>
         <button
           className="btn btn-secondary"
-          onClick={handleResetView}
+          onClick={(e) => { e.stopPropagation(); handleResetView(e); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           title="시점 초기화"
           style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
         >

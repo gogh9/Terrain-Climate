@@ -178,6 +178,23 @@ export default function App() {
     }));
   };
 
+  // Reset student/teacher progress for current map session
+  const handleResetProgress = () => {
+    if (!window.confirm('현재 지도의 나의 학습 기록(체크 표시 및 입력 내용)을 초기화하시겠습니까?')) return;
+    sound.playClick();
+    setCompletedIds([]);
+    setUserAnswers({});
+    try {
+      localStorage.removeItem(`geo_completed_ids_${effectiveSessionId}`);
+      localStorage.removeItem(`geo_user_answers_${effectiveSessionId}`);
+      if (effectiveSessionId === '1') {
+        localStorage.removeItem('geo_completed_ids');
+        localStorage.removeItem('geo_user_answers');
+      }
+    } catch (e) {}
+    alert('학습 기록이 초기화되었습니다.');
+  };
+
   // Student Login Handler (반, 번호, 이름)
   const handleStudentLogin = ({ studentClass, number, name }) => {
     const fullName = `${studentClass}반 ${number}번 ${name}`;
@@ -304,6 +321,7 @@ export default function App() {
           completedIds={completedIds}
           userAnswers={userAnswers}
           onClose={() => setShowSummaryNote(false)}
+          onResetProgress={handleResetProgress}
         />
       )}
 

@@ -1,12 +1,13 @@
 import React from 'react';
-import { X, Printer, CheckCircle2, Circle } from 'lucide-react';
+import { X, Printer, CheckCircle2, Circle, RotateCcw } from 'lucide-react';
 import { sound } from '../utils/audio';
 
 export default function SummaryNoteModal({
   locations,
   completedIds,
   userAnswers,
-  onClose
+  onClose,
+  onResetProgress
 }) {
   const completedCount = completedIds.length;
   const totalCount = locations.length;
@@ -46,6 +47,16 @@ export default function SummaryNoteModal({
           </div>
 
           <div className="no-print" style={{ display: 'flex', gap: '8px' }}>
+            {onResetProgress && completedCount > 0 && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => { onResetProgress(); onClose(); }}
+                style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', color: '#ffa42b', borderColor: '#ffa42b' }}
+                title="이 지도의 나의 학습 기록 초기화"
+              >
+                <RotateCcw size={15} /> 학습 초기화
+              </button>
+            )}
             <button className="btn btn-primary" onClick={handlePrint} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
               <Printer size={16} /> 인쇄, PDF 저장
             </button>

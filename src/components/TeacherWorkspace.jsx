@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Download, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft } from 'lucide-react';
-import { fetchAllSubmissions, deleteSubmission, signOutUser } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, signOutUser } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
@@ -232,14 +232,26 @@ export default function TeacherWorkspace({ user, locations = [], onEnterMap, onL
   const handleResetSession = async (sessionId) => {
     if (!window.confirm('이 지도의 수집된 모든 데이터 제출을 초기화하시겠습니까?')) return;
     sound.playClick();
+
+    const targetSessionId = String(sessionId || '1');
+
+    // 1. Immediately filter out from React state for zero UI latency
+    setSubmissions(prev => prev.filter(sub => {
+      const sid = String(sub.session_id || '1');
+      return sid !== targetSessionId;
+    }));
+
+    // 2. Perform comprehensive reset (blacklist IDs + reset timestamp + clear local cache + Supabase delete)
     const toDelete = submissions.filter(sub => {
-      if (sub.session_id) return String(sub.session_id) === String(sessionId);
-      return String(sessionId) === '1';
+      if (sub.session_id) return String(sub.session_id) === targetSessionId;
+      return targetSessionId === '1';
     });
-    for (const s of toDelete) {
-      await deleteSubmission(s.id);
-    }
-    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, accessCount: 0 } : s));
+    await resetSessionSubmissions(targetSessionId, toDelete);
+
+    // 3. Reset access count in session state
+    setSessions(prev => prev.map(s => String(s.id) === targetSessionId ? { ...s, accessCount: 0 } : s));
+
+    // 4. Reload submissions
     await loadSubmissions();
     alert('초기화되었습니다.');
   };
