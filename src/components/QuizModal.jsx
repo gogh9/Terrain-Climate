@@ -163,9 +163,15 @@ export default function QuizModal({
       }
     }
 
-    // 2. Feature Keywords Check
-    const matchedFeatureKeywords = location.featureKeywords ? location.featureKeywords.filter(kw => cleanFeature.includes(kw)) : [];
-    const isFeatureGood = matchedFeatureKeywords.length >= 1 || cleanFeature.length >= 8;
+    // 2. Feature Keywords Check (키워드 2개 이상 매칭 시 인정)
+    const normFeature = cleanFeature.replace(/\s+/g, '').toLowerCase();
+    const matchedFeatureKeywords = location.featureKeywords
+      ? location.featureKeywords.filter(kw => {
+          const normKw = kw.replace(/\s+/g, '').toLowerCase();
+          return normFeature.includes(normKw);
+        })
+      : [];
+    const isFeatureGood = matchedFeatureKeywords.length >= 2;
 
     if (isNameCorrect && isFeatureGood) {
       sound.playSuccess();
@@ -177,7 +183,7 @@ export default function QuizModal({
       setFeedback({
         isSuccess: true,
         score: 100,
-        message: `🎉 참 잘했어요! ${location.category === 'climate' ? '기후' : '지형'}와 핵심 특징을 바르게 작성했습니다.`,
+        message: `🎉 참 잘했어요! ${location.category === 'climate' ? '기후' : '지형'}와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
         matchedKeywords: matchedFeatureKeywords
       });
       onComplete(location.id, { name: cleanName, feature: cleanFeature });
@@ -195,15 +201,17 @@ export default function QuizModal({
         isSuccess: false,
         score: 50,
         message: location.category === 'climate' 
-          ? '💡 특징은 잘 작성했어요! 기후를 다시 확인해 보세요.' 
-          : '💡 특징은 잘 작성했어요! 지형을 다시 확인해 보세요.',
+          ? `💡 특징 핵심 키워드는 잘 작성했어요! (${matchedFeatureKeywords.join(', ')}) 기후를 다시 확인해 보세요.` 
+          : `💡 특징 핵심 키워드는 잘 작성했어요! (${matchedFeatureKeywords.join(', ')}) 지형을 다시 확인해 보세요.`,
         matchedKeywords: matchedFeatureKeywords
       });
     } else if (isNameCorrect && !isFeatureGood) {
       setFeedback({
         isSuccess: false,
         score: 50,
-        message: '💡 명칭은 맞았습니다! 특징 설명에 교과서 내용(예: 환경, 가옥, 농업, 옷차림 등)을 조금 더 자세히 적어보세요.',
+        message: matchedFeatureKeywords.length === 1
+          ? `💡 명칭은 맞았지만 핵심 키워드가 1개만 포함되었습니다 (${matchedFeatureKeywords[0]}). 핵심 키워드가 최소 2개 이상 들어가도록 특징을 더 자세히 적어보세요.`
+          : '💡 명칭은 맞았습니다! 특징 설명에 교과서 핵심 키워드(환경, 가옥, 농업, 옷차림 등)가 최소 2개 이상 들어가도록 조금 더 자세히 적어보세요.',
         matchedKeywords: matchedFeatureKeywords
       });
     } else {
@@ -211,8 +219,8 @@ export default function QuizModal({
         isSuccess: false,
         score: 30,
         message: location.category === 'climate' 
-          ? '🧐 힌트를 참고하여 알맞은 기후와 특징을 다시 작성해 보세요.' 
-          : '🧐 힌트를 참고하여 알맞은 지형과 특징을 다시 작성해 보세요.',
+          ? '🧐 힌트를 참고하여 알맞은 기후와 핵심 특징(키워드 2개 이상)을 다시 작성해 보세요.' 
+          : '🧐 힌트를 참고하여 알맞은 지형과 핵심 특징(키워드 2개 이상)을 다시 작성해 보세요.',
         matchedKeywords: matchedFeatureKeywords
       });
     }
@@ -586,7 +594,7 @@ export default function QuizModal({
                     onChange={(e) => setInputFeature(e.target.value)}
                     onPaste={(e) => e.preventDefault()}
                     onDrop={(e) => e.preventDefault()}
-                    placeholder="교과서에서 학습했거나 사진을 통해서 알 수 있는 지형이나 기후의 특징, 주민들의 생활 모습(의식주 등)을 20자 이상 자세히 적어보세요."
+                    placeholder="교과서에서 학습했거나 사진을 통해서 알 수 있는 지형/기후 특징, 주민 생활 모습(의식주 등)을 핵심 키워드 2개 이상 포함하여 20자 이상 자세히 적어보세요."
                     style={{
                       width: '100%',
                       padding: '0.9rem 1.2rem',
@@ -606,7 +614,7 @@ export default function QuizModal({
                   {/* Character Counter & Minimum 20 Guidance */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.82rem' }}>
                     <span style={{ color: '#8e8e8e', fontSize: '0.8rem' }}>
-                      * 20자 이상 작성해야 제출할 수 있습니다.
+                      * 핵심 키워드 2개 이상 포함 및 20자 이상 작성 시 정답 인정
                     </span>
                     <span
                       style={{

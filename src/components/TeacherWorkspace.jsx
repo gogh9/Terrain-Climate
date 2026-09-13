@@ -1297,6 +1297,12 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 <div style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: 1.7 }}>
                   {loc.modelAnswer}
                 </div>
+                {loc.featureKeywords && loc.featureKeywords.length > 0 && (
+                  <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #282828', fontSize: '0.82rem', color: '#9e9e9e' }}>
+                    <span style={{ color: '#1ed760', fontWeight: 700 }}>📌 핵심 판정 키워드 (2개 이상 포함 시 인정): </span>
+                    {loc.featureKeywords.join(', ')}
+                  </div>
+                )}
               </div>
 
               {/* Bottom Actions */}
