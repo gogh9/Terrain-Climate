@@ -372,6 +372,7 @@ export default function App() {
           locations={displayedLocations}
           completedIds={completedIds}
           userAnswers={userAnswers}
+          studentUser={studentUser}
           onClose={() => setShowSummaryNote(false)}
           onResetProgress={handleResetProgress}
         />
