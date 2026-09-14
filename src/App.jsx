@@ -24,7 +24,13 @@ export default function App() {
   // Student user starts as null on fresh link entry so the login screen is always presented
   const [studentUser, setStudentUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [activeView, setActiveView] = useState('workspace'); // 'workspace' | 'map'
+  const [activeView, setActiveView] = useState(() => {
+    try {
+      const saved = localStorage.getItem('geo_active_view');
+      if (saved) return saved;
+    } catch {}
+    return 'workspace';
+  }); // 'workspace' | 'map'
   const [currentSession, setCurrentSession] = useState(null);
   const [urlCategory, setUrlCategory] = useState(null);
   const [urlExplore, setUrlExplore] = useState(() => {
@@ -41,6 +47,13 @@ export default function App() {
       return null;
     }
   });
+
+  // Persist activeView to LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('geo_active_view', activeView);
+    } catch (e) {}
+  }, [activeView]);
 
   // Subscribe to Supabase Auth Changes
   useEffect(() => {
@@ -82,7 +95,10 @@ export default function App() {
       const exploreParam = params.get('explore');
       if (sessionId) {
         setSessionParam(sessionId);
-        setActiveView('map');
+        const savedView = localStorage.getItem('geo_active_view');
+        if (savedView !== 'workspace') {
+          setActiveView('map');
+        }
         const saved = localStorage.getItem('geo_map_sessions');
         if (saved) {
           const sessions = JSON.parse(saved);
@@ -334,8 +350,15 @@ export default function App() {
         sessionTitle={currentSession?.title}
         onOpenSummaryNote={() => setShowSummaryNote(true)}
         onOpenTeacherDashboard={() => {
-          if (user) setActiveView('workspace');
-          else setShowTeacherDashboard(true);
+          if (user) {
+            setActiveView('workspace');
+            try {
+              localStorage.setItem('geo_active_view', 'workspace');
+              window.history.replaceState(null, '', window.location.pathname);
+            } catch (e) {}
+          } else {
+            setShowTeacherDashboard(true);
+          }
         }}
         user={user}
         userRole={userRole}

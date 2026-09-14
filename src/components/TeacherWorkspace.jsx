@@ -14,7 +14,7 @@ export const LANDFORM_ORDER = [
   '베트남·타이 (메콩강·짜오프라야강)',
   '캐나다 (오타와강)',
   '짐바브웨 (빅토리아 폭포)',
-  '페루 (티티카카호와)',
+  '페루 (티티카카호)',
   '오스트레일리아 (산호 해안)',
   '오스트레일리아 (암석 해안)',
   '미국 (샌타모니카 모래 해안)',
@@ -42,6 +42,7 @@ export const normalizeTitle = (title) => {
   if (!title) return '';
   return String(title)
     .replace(/\s*\/\s*/g, ', ')
+    .replace(/티티카카호와/g, '티티카카호')
     .replace(/영국\s*,\s*네덜란드/g, '영국·네덜란드')
     .replace(/네덜란드\s*,\s*영국/g, '영국·네덜란드')
     .replace(/네덜란드·영국/g, '영국·네덜란드')
@@ -127,21 +128,13 @@ export const compareStudents = (rawA, rawB) => {
   return (a.name || '').localeCompare(b.name || '', 'ko');
 };
 
-// 세션 카테고리에 따른 지점 열 목록 계산 (기본 목록 + 추가 지점)
-export const getColumnsForSession = (session, subs = []) => {
+// 세션 카테고리에 따른 지점 열 목록 계산 (지형: 지형 12개 표준 순서, 기후: 기후 12개 표준 순서)
+export const getColumnsForSession = (session) => {
   const isClimate = session?.categoryFilter === 'climate';
-  const defaultList = isClimate ? CLIMATE_ORDER : LANDFORM_ORDER;
-
-  const extraCols = [];
-  subs.forEach(s => {
-    const rawTitle = s.location_title || s.answer_name;
-    const title = normalizeTitle(rawTitle);
-    if (title && !defaultList.includes(title) && !extraCols.includes(title)) {
-      extraCols.push(title);
-    }
-  });
-
-  return [...defaultList, ...extraCols];
+  const isLandform = session?.categoryFilter === 'landform';
+  if (isClimate) return CLIMATE_ORDER;
+  if (isLandform) return LANDFORM_ORDER;
+  return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
 };
 
 // 회차 목록을 무조건 순서대로 1회, 2회, 3회... 로 재부여하는 헬퍼
@@ -199,7 +192,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     ];
   });
 
-  const [activeSessionId, setActiveSessionId] = useState(() => initialSessionId ? String(initialSessionId) : '1');
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    try {
+      const savedActive = localStorage.getItem('geo_active_session_id');
+      if (savedActive) return String(savedActive);
+    } catch {}
+    return initialSessionId ? String(initialSessionId) : '1';
+  });
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
@@ -211,6 +210,25 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       setActiveSessionId(String(initialSessionId));
     }
   }, [initialSessionId]);
+
+  // Persist activeSessionId to LocalStorage
+  useEffect(() => {
+    if (activeSessionId) {
+      try {
+        localStorage.setItem('geo_active_session_id', String(activeSessionId));
+      } catch (e) {}
+    }
+  }, [activeSessionId]);
+
+  // Set workspace active view and clean lingering URL parameters on workspace mount
+  useEffect(() => {
+    try {
+      localStorage.setItem('geo_active_view', 'workspace');
+      if (window.location.search) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch (e) {}
+  }, []);
 
   // Save sessions to LocalStorage
   useEffect(() => {
@@ -350,27 +368,42 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     return sessions.find(s => String(s.id) === String(activeSessionId)) || sessions[0];
   }, [sessions, activeSessionId]);
 
-  // Submissions filtered strictly for the Active Session
+  // Submissions filtered strictly for the Active Session & Category
   const sessionSubmissions = useMemo(() => {
-    return submissions.filter(sub => {
-      if (sub.session_id) return String(sub.session_id) === String(activeSessionId);
-      // Legacy submissions without session_id are assigned to session '1'
-      return String(activeSessionId) === '1';
-    });
-  }, [submissions, activeSessionId]);
+    const isClimate = activeSession?.categoryFilter === 'climate';
+    const isLandform = activeSession?.categoryFilter === 'landform';
 
-  // Columns for Active Session
+    return submissions.filter(sub => {
+      const matchesSession = sub.session_id ? String(sub.session_id) === String(activeSessionId) : String(activeSessionId) === '1';
+      if (!matchesSession) return false;
+
+      const title = normalizeTitle(sub.location_title || sub.answer_name);
+      if (isLandform) return LANDFORM_ORDER.includes(title);
+      if (isClimate) return CLIMATE_ORDER.includes(title);
+      return true;
+    });
+  }, [submissions, activeSessionId, activeSession]);
+
+  // Columns for Active Session (Strictly 12 standard columns according to session category)
   const activeColumns = useMemo(() => {
-    return getColumnsForSession(activeSession, sessionSubmissions);
-  }, [activeSession, sessionSubmissions]);
+    return getColumnsForSession(activeSession);
+  }, [activeSession]);
 
   // Excel (.xls SpreadsheetML) Export with centering, proper widths, and student order
   const handleExportExcel = (session) => {
     sound.playClick();
     const targetSession = session || activeSession;
+    const isClimate = targetSession?.categoryFilter === 'climate';
+    const isLandform = targetSession?.categoryFilter === 'landform';
+
     const targetSubmissions = submissions.filter(sub => {
-      if (sub.session_id) return String(sub.session_id) === String(targetSession.id);
-      return String(targetSession.id) === '1';
+      const matchesSession = sub.session_id ? String(sub.session_id) === String(targetSession.id) : String(targetSession.id) === '1';
+      if (!matchesSession) return false;
+
+      const title = normalizeTitle(sub.location_title || sub.answer_name);
+      if (isLandform) return LANDFORM_ORDER.includes(title);
+      if (isClimate) return CLIMATE_ORDER.includes(title);
+      return true;
     });
 
     if (targetSubmissions.length === 0) {
@@ -378,7 +411,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       return;
     }
 
-    const columns = getColumnsForSession(targetSession, targetSubmissions);
+    const columns = getColumnsForSession(targetSession);
 
     // Group submissions by student name
     const studentsMap = {};
@@ -649,10 +682,22 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       >
         {sessions.map(session => {
           const isSelected = String(activeSessionId) === String(session.id);
-          const sessionSubCount = submissions.filter(sub => {
-            if (sub.session_id) return String(sub.session_id) === String(session.id);
-            return String(session.id) === '1';
-          }).length;
+          const isClimate = session.categoryFilter === 'climate';
+          const isLandform = session.categoryFilter === 'landform';
+          const targetSessionId = String(session.id);
+
+          const sessionSubmissionsForCard = submissions.filter(sub => {
+            const subSid = String(sub.session_id || '1');
+            if (subSid !== targetSessionId) return false;
+
+            const title = normalizeTitle(sub.location_title || sub.answer_name);
+            if (isLandform) return LANDFORM_ORDER.includes(title);
+            if (isClimate) return CLIMATE_ORDER.includes(title);
+            return true;
+          });
+
+          const cardStudentCount = new Set(sessionSubmissionsForCard.map(s => s.student_name || '익명')).size;
+          const sessionSubCount = sessionSubmissionsForCard.length;
 
           return (
             <div
@@ -668,22 +713,38 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 gap: '1.1rem',
                 position: 'relative',
                 transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
-                boxShadow: isSelected ? '0 0 20px rgba(29, 215, 96, 0.25)' : 'rgba(0, 0, 0, 0.3) 0px 8px 8px'
+                boxShadow: isSelected ? '0 0 20px rgba(29, 215, 96, 0.25)' : 'rgba(0, 0, 0, 0.3) 0px 8px 8px',
+                cursor: 'pointer'
               }}
             >
               {/* Card Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                    {session.title}
-                  </h3>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#1ed760', fontWeight: 700 }}>
-                      접속 횟수 (학생): <strong style={{ color: '#1ed760' }}>{session.accessCount}회</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                      {session.title}
+                    </h3>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      background: isClimate ? 'rgba(245, 158, 11, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                      color: isClimate ? '#fbbf24' : '#38bdf8',
+                      border: `1px solid ${isClimate ? 'rgba(245, 158, 11, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
+                    }}>
+                      {isClimate ? '☀️ 기후 (12개)' : '🏔️ 지형 (12개)'}
                     </span>
-                    <span style={{ fontSize: '0.82rem', color: '#b3b3b3', fontWeight: 600 }}>
-                      제출 데이터: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong>
-                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa' }}>
+                    <span>제출 학생: <strong style={{ color: cardStudentCount > 0 ? '#1ed760' : '#71717a' }}>{cardStudentCount}명</strong></span>
+                    <span>•</span>
+                    <span>답안 건수: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong></span>
+                    {isSelected && (
+                      <span style={{ color: '#1ed760', fontWeight: 800, marginLeft: '4px' }}>
+                        ● 선택됨 (아래 확인)
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -755,9 +816,35 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     cursor: 'pointer'
                   }}
                 >
-                  <option value="landform">🏔️ 지형</option>
-                  <option value="climate">☀️ 기후</option>
+                  <option value="landform">🏔️ 지형 (12개 지점)</option>
+                  <option value="climate">☀️ 기후 (12개 지점)</option>
                 </select>
+              </div>
+
+              {/* Distinct Share Link Box */}
+              <div
+                style={{
+                  background: '#121212',
+                  border: '1px solid #282828',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
+                  <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    🔗 배부 링크:
+                  </span>
+                  <span style={{ fontSize: '0.76rem', color: '#888888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {`${window.location.origin}/?session=${session.id}&category=${session.categoryFilter === 'climate' ? 'climate' : 'landform'}&explore=${session.allowExplore !== false ? '1' : '0'}`}
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', background: '#222222', color: '#a1a1aa', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                  ID: {session.id}
+                </span>
               </div>
 
               {/* Actions: Direct Map View & Excel Export & Open/Close Toggle & Explore Toggle (Equal 4-Column Grid) */}
@@ -906,10 +993,21 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                📝 학생 학습 제출 내용 확인 & 관리
+                📝 [{activeSession?.title || '선택된 지도'}] 학생 학습 제출 내용 확인 & 관리
               </h2>
-              <span style={{ background: '#282828', color: '#b3b3b3', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
-                참여 학생 {studentNames.length}명
+              <span style={{
+                background: activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                color: activeSession?.categoryFilter === 'climate' ? '#fbbf24' : '#38bdf8',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                padding: '3px 10px',
+                borderRadius: '9999px',
+                border: `1px solid ${activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
+              }}>
+                {activeSession?.categoryFilter === 'climate' ? '☀️ 기후' : '🏔️ 지형'}
+              </span>
+              <span style={{ background: '#282828', color: '#1ed760', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
+                참여 학생 {studentNames.length}명 ({sessionSubmissions.length}개 답안)
               </span>
             </div>
           </div>
