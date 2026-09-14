@@ -258,7 +258,6 @@ export default function TeacherDashboardModal({ onClose, locations = [] }) {
                   <th style={{ padding: '10px 14px', width: '120px' }}>제출 학생</th>
                   <th style={{ padding: '10px 14px', width: '170px' }}>지형/기후명</th>
                   <th style={{ padding: '10px 14px' }}>학생이 작성한 특징 및 생활 모습 내용</th>
-                  <th style={{ padding: '10px 14px', width: '130px' }}>제출 시각</th>
                   <th style={{ padding: '10px 14px', width: '90px', textAlign: 'center' }}>상세 확인</th>
                   <th style={{ padding: '10px 14px', width: '50px', textAlign: 'center' }}>삭제</th>
                 </tr>
@@ -306,14 +305,6 @@ export default function TeacherDashboardModal({ onClose, locations = [] }) {
                         >
                           {sub.answer_feature || '-'}
                         </div>
-                      </td>
-                      <td style={{ padding: '10px 14px', color: '#b3b3b3', fontSize: '0.78rem' }}>
-                        {sub.created_at ? new Date(sub.created_at).toLocaleString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        }) : '-'}
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                         <button
@@ -415,7 +406,6 @@ export default function TeacherDashboardModal({ onClose, locations = [] }) {
                     <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.85rem', color: '#b3b3b3', flexWrap: 'wrap' }}>
                       <span>👤 <strong>제출 학생:</strong> <span style={{ color: '#1ed760', fontWeight: 700 }}>{selectedSubmission.student_name}</span></span>
                       {loc && <span>📍 <strong>대륙:</strong> {loc.continent}</span>}
-                      <span>🕒 <strong>제출 시각:</strong> {selectedSubmission.created_at ? new Date(selectedSubmission.created_at).toLocaleString('ko-KR') : '-'}</span>
                     </div>
                   </div>
 

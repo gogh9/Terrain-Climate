@@ -1219,14 +1219,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                               }}>
                                 {sub.answer_feature || '(작성 내용 없음)'}
                               </div>
-
-                              {sub.created_at && (
-                                <div style={{ textAlign: 'right', marginTop: '3px' }}>
-                                  <span style={{ fontSize: '0.64rem', color: '#71717a' }}>
-                                    {new Date(sub.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                              )}
                             </div>
                           </td>
                         );
@@ -1337,7 +1329,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                   <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.85rem', color: '#b3b3b3', flexWrap: 'wrap' }}>
                     <span>👤 <strong>제출 학생:</strong> <span style={{ color: '#1ed760', fontWeight: 700 }}>{selectedSubmission.student_name}</span></span>
                     <span>📍 <strong>대륙:</strong> {loc.continent}</span>
-                    <span>🕒 <strong>제출 시각:</strong> {selectedSubmission.created_at ? new Date(selectedSubmission.created_at).toLocaleString('ko-KR') : '-'}</span>
                   </div>
                 </div>
 
