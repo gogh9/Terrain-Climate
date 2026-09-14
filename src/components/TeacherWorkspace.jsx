@@ -137,6 +137,26 @@ export const getColumnsForSession = (session) => {
   return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
 };
 
+// 세션별 제출 데이터 추출 헬퍼 (1회차 레거시 데이터 호환 및 회차별 엄격 격리)
+export const getSubmissionsForSession = (session, allSubmissions = [], allSessions = []) => {
+  if (!session) return [];
+  const targetId = String(session.id);
+  const isFirstSession = allSessions.length > 0 ? String(allSessions[0].id) === targetId : targetId === '1';
+  const isClimate = session.categoryFilter === 'climate';
+  const isLandform = session.categoryFilter === 'landform';
+
+  return allSubmissions.filter(sub => {
+    const subSid = String(sub.session_id || '1');
+    const matchesSession = subSid === targetId || (isFirstSession && (subSid === '1' || !sub.session_id));
+    if (!matchesSession) return false;
+
+    const title = normalizeTitle(sub.location_title || sub.answer_name);
+    if (isLandform) return LANDFORM_ORDER.includes(title);
+    if (isClimate) return CLIMATE_ORDER.includes(title);
+    return true;
+  });
+};
+
 // 회차 목록을 무조건 순서대로 1회, 2회, 3회... 로 재부여하는 헬퍼
 export const renumberSessions = (sessionList) => {
   if (!Array.isArray(sessionList)) return [];
@@ -370,19 +390,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
   // Submissions filtered strictly for the Active Session & Category
   const sessionSubmissions = useMemo(() => {
-    const isClimate = activeSession?.categoryFilter === 'climate';
-    const isLandform = activeSession?.categoryFilter === 'landform';
-
-    return submissions.filter(sub => {
-      const matchesSession = sub.session_id ? String(sub.session_id) === String(activeSessionId) : String(activeSessionId) === '1';
-      if (!matchesSession) return false;
-
-      const title = normalizeTitle(sub.location_title || sub.answer_name);
-      if (isLandform) return LANDFORM_ORDER.includes(title);
-      if (isClimate) return CLIMATE_ORDER.includes(title);
-      return true;
-    });
-  }, [submissions, activeSessionId, activeSession]);
+    return getSubmissionsForSession(activeSession, submissions, sessions);
+  }, [submissions, activeSession, sessions]);
 
   // Columns for Active Session (Strictly 12 standard columns according to session category)
   const activeColumns = useMemo(() => {
@@ -393,18 +402,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const handleExportExcel = (session) => {
     sound.playClick();
     const targetSession = session || activeSession;
-    const isClimate = targetSession?.categoryFilter === 'climate';
-    const isLandform = targetSession?.categoryFilter === 'landform';
-
-    const targetSubmissions = submissions.filter(sub => {
-      const matchesSession = sub.session_id ? String(sub.session_id) === String(targetSession.id) : String(targetSession.id) === '1';
-      if (!matchesSession) return false;
-
-      const title = normalizeTitle(sub.location_title || sub.answer_name);
-      if (isLandform) return LANDFORM_ORDER.includes(title);
-      if (isClimate) return CLIMATE_ORDER.includes(title);
-      return true;
-    });
+    const targetSubmissions = getSubmissionsForSession(targetSession, submissions, sessions);
 
     if (targetSubmissions.length === 0) {
       alert(`'${targetSession.title}' 지도에 저장된 제출 데이터가 없습니다.`);
@@ -684,18 +682,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           const isSelected = String(activeSessionId) === String(session.id);
           const isClimate = session.categoryFilter === 'climate';
           const isLandform = session.categoryFilter === 'landform';
-          const targetSessionId = String(session.id);
-
-          const sessionSubmissionsForCard = submissions.filter(sub => {
-            const subSid = String(sub.session_id || '1');
-            if (subSid !== targetSessionId) return false;
-
-            const title = normalizeTitle(sub.location_title || sub.answer_name);
-            if (isLandform) return LANDFORM_ORDER.includes(title);
-            if (isClimate) return CLIMATE_ORDER.includes(title);
-            return true;
-          });
-
+          const sessionSubmissionsForCard = getSubmissionsForSession(session, submissions, sessions);
           const cardStudentCount = new Set(sessionSubmissionsForCard.map(s => s.student_name || '익명')).size;
           const sessionSubCount = sessionSubmissionsForCard.length;
 
@@ -1012,8 +999,32 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
             </div>
           </div>
 
-          {/* Refresh Button */}
+          {/* Controls: Excel Download & Refresh */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => handleExportExcel(activeSession)}
+              style={{
+                background: '#1ed760',
+                border: 'none',
+                color: '#000000',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              title="현재 보고 있는 회차 학생 제출 데이터를 엑셀로 다운로드"
+            >
+              <Download size={13} />
+              <span>엑셀 다운로드</span>
+            </button>
+
             <button
               onClick={() => {
                 sound.playClick();
