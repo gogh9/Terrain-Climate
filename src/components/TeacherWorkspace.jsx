@@ -977,38 +977,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           </button>
 
           <button
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              background: '#1f1f1f',
-              color: '#38bdf8',
-              border: '1px solid #0284c7',
-              padding: '0.65rem 1.2rem',
-              borderRadius: '9999px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.25)',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#0284c7'; e.currentTarget.style.color = '#ffffff'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#1f1f1f'; e.currentTarget.style.color = '#38bdf8'; }}
-            title="저장해둔 엑셀(.xlsx, .xls, .csv) 자료를 업로드하여 학생 답안을 일괄 복원합니다"
-          >
-            <Upload size={16} /> 엑셀 파일 올리기
-          </button>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".xlsx, .xls, .csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv"
-            style={{ display: 'none' }}
-          />
-
-          <button
             onClick={handleCreateNewMap}
             style={{
               background: '#1ed760',
@@ -1367,30 +1335,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
           {/* Controls: Excel Download & Refresh */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                background: '#1f1f1f',
-                border: '1px solid #0284c7',
-                color: '#38bdf8',
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#0284c7'; e.currentTarget.style.color = '#ffffff'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#1f1f1f'; e.currentTarget.style.color = '#38bdf8'; }}
-              title="저장해둔 엑셀(.xlsx, .xls, .csv) 파일을 업로드하여 학생 답안을 일괄 복원합니다"
-            >
-              <Upload size={13} />
-              <span>엑셀 파일 올리기</span>
-            </button>
-
             <button
               onClick={() => handleExportExcel(activeSession)}
               style={{
