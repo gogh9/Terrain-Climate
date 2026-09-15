@@ -3,7 +3,7 @@ import { X, RefreshCw, Download, Search, Users, FileText, Trash2, Award, Eye } f
 import { fetchAllSubmissions, deleteSubmission } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
-export default function TeacherDashboardModal({ onClose, locations = [] }) {
+export default function TeacherDashboardModal({ onClose, locations = [], user = null }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,7 +14,7 @@ export default function TeacherDashboardModal({ onClose, locations = [] }) {
   // Load submissions from Supabase
   const loadData = async () => {
     setIsRefreshing(true);
-    const result = await fetchAllSubmissions(300);
+    const result = await fetchAllSubmissions({ limit: 300, user });
     if (result.success) {
       setSubmissions(result.data);
     }
@@ -36,7 +36,7 @@ export default function TeacherDashboardModal({ onClose, locations = [] }) {
   const handleDelete = async (id, studentName) => {
     if (!window.confirm(`'${studentName}' 학생의 이 제출 항목을 삭제하시겠습니까?`)) return;
     sound.playClick();
-    const result = await deleteSubmission(id);
+    const result = await deleteSubmission(id, user);
     if (result.success) {
       setSubmissions(prev => prev.filter(item => item.id !== id));
     } else {

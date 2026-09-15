@@ -11,7 +11,7 @@ import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
-import { signOutUser } from './utils/supabaseService';
+import { signOutUser, getUserNamespace } from './utils/supabaseService';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -99,15 +99,38 @@ export default function App() {
         if (savedView !== 'workspace') {
           setActiveView('map');
         }
-        const saved = localStorage.getItem('geo_map_sessions');
-        if (saved) {
-          const sessions = JSON.parse(saved);
-          const found = sessions.find(s => s.id === sessionId);
-          if (found) {
-            setCurrentSession(found);
-            if (found.categoryFilter) {
-              setUrlCategory(found.categoryFilter);
+        
+        // Find session info across all user namespaces and legacy storage
+        let found = null;
+        const userNs = getUserNamespace(user);
+        const candidateKeys = [`geo_map_sessions_${userNs}`, 'geo_map_sessions'];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('geo_map_sessions')) {
+            candidateKeys.push(key);
+          }
+        }
+
+        for (const k of candidateKeys) {
+          try {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                const match = list.find(s => String(s.id) === String(sessionId));
+                if (match) {
+                  found = match;
+                  break;
+                }
+              }
             }
+          } catch (e) {}
+        }
+
+        if (found) {
+          setCurrentSession(found);
+          if (found.categoryFilter) {
+            setUrlCategory(found.categoryFilter);
           }
         }
       }
@@ -120,7 +143,7 @@ export default function App() {
     } catch (e) {
       console.warn('URL param parse error', e);
     }
-  }, []);
+  }, [user]);
 
   // Determine active category filter (currentSession has highest priority)
   const activeCategoryFilter = currentSession?.categoryFilter || urlCategory || categoryFilter || 'all';
@@ -408,6 +431,7 @@ export default function App() {
       {showTeacherDashboard && (
         <TeacherDashboardModal
           locations={LOCATION_DATA}
+          user={user}
           onClose={() => setShowTeacherDashboard(false)}
         />
       )}

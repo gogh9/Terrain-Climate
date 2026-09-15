@@ -1,6 +1,24 @@
 import { supabase } from '../supabase';
 
 /**
+ * Helper to get user namespace key
+ */
+export function getUserNamespace(user) {
+  if (!user) return 'anonymous';
+  if (user.id) return user.id;
+  if (user.email) return user.email.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return 'default';
+}
+
+/**
+ * Generate a collision-free session ID bound to user/account
+ */
+export function generateSessionId(user) {
+  const prefix = user?.id ? user.id.slice(0, 8) : 'map';
+  return `s_${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+}
+
+/**
  * Save quiz submission to Supabase database.
  * Table name: `quiz_submissions`
  */
@@ -89,13 +107,74 @@ export async function saveQuizSubmission({
 }
 
 /**
- * Fetch all student submissions from Supabase and merge with localStorage
+ * Save multiple quiz submissions in bulk (for Excel import)
  */
-export async function fetchAllSubmissions(limit = 500) {
-  // Load deleted IDs blacklist and session reset timestamps
+export async function saveBatchSubmissions(submissionsList = [], user = null) {
+  if (!Array.isArray(submissionsList) || submissionsList.length === 0) {
+    return { success: true, data: [] };
+  }
+
+  const ns = getUserNamespace(user);
+  const formatted = submissionsList.map((item, idx) => ({
+    id: item.id || `local_imp_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+    session_id: String(item.sessionId || item.session_id || '1'),
+    location_id: item.locationId || item.location_id || 'loc_unknown',
+    location_title: item.locationTitle || item.location_title || '',
+    student_name: item.studentName || item.student_name || '익명 학생',
+    answer_name: item.answerName || item.answer_name || '',
+    answer_feature: item.answerFeature || item.answer_feature || '',
+    score: item.score || 100,
+    created_at: item.createdAt || item.created_at || new Date().toISOString()
+  }));
+
+  // 1. Update local cache
+  try {
+    const existing = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
+    const combined = [...formatted, ...existing].slice(0, 1000);
+    localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(combined));
+    localStorage.setItem('geo_quiz_submissions', JSON.stringify(combined));
+  } catch (e) {
+    console.warn('Batch local save warning:', e);
+  }
+
+  // 2. Insert to Supabase in chunks of 50
+  try {
+    const payloads = formatted.map(f => ({
+      session_id: f.session_id,
+      location_id: f.location_id,
+      location_title: f.location_title,
+      student_name: f.student_name,
+      answer_name: f.answer_name,
+      answer_feature: f.answer_feature,
+      score: f.score,
+      created_at: f.created_at
+    }));
+
+    for (let i = 0; i < payloads.length; i += 50) {
+      const chunk = payloads.slice(i, i + 50);
+      const { error } = await supabase.from('quiz_submissions').insert(chunk);
+      if (error) {
+        console.warn('Supabase batch insert error chunk:', error.message);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase bulk insert warning:', err);
+  }
+
+  return { success: true, data: formatted };
+}
+
+/**
+ * Fetch student submissions from Supabase and merge with localStorage,
+ * with strict isolation support for allowed session IDs.
+ */
+export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = null, user = null } = {}) {
+  const ns = getUserNamespace(user);
+
+  // Load deleted IDs blacklist and session reset timestamps for this user/namespace
   let deletedIds = new Set();
   try {
-    const list = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    const list = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
     deletedIds = new Set(list.map(String));
   } catch (e) {}
 
@@ -104,8 +183,17 @@ export async function fetchAllSubmissions(limit = 500) {
     if (item.id && deletedIds.has(String(item.id))) return false;
     
     const sid = String(item.session_id || '1');
+    
+    // If allowedSessionIds are specified, strictly filter out foreign sessions
+    if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
+      const allowedSet = new Set(allowedSessionIds.map(String));
+      if (!allowedSet.has(sid)) {
+        return false;
+      }
+    }
+
     try {
-      const resetTimeStr = localStorage.getItem(`geo_session_reset_${sid}`);
+      const resetTimeStr = localStorage.getItem(`geo_session_reset_${ns}_${sid}`) || localStorage.getItem(`geo_session_reset_${sid}`);
       if (resetTimeStr && item.created_at) {
         if (new Date(item.created_at) <= new Date(resetTimeStr)) {
           return false;
@@ -117,11 +205,18 @@ export async function fetchAllSubmissions(limit = 500) {
 
   let remoteData = [];
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('quiz_submissions')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
+      // In query filter if allowedSessionIds are provided
+      query = query.in('session_id', allowedSessionIds.map(String));
+    }
+
+    const { data, error } = await query;
 
     if (!error && Array.isArray(data)) {
       remoteData = data;
@@ -130,10 +225,12 @@ export async function fetchAllSubmissions(limit = 500) {
     console.warn('Supabase 조회 실패, 로컬 캐시를 조회합니다:', err);
   }
 
-  // Load from local storage
+  // Load from local storage (both user-namespaced and general)
   let localData = [];
   try {
-    localData = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
+    const nsData = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || '[]');
+    const genData = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
+    localData = [...nsData, ...genData];
   } catch (e) {}
 
   // Map local items by key to preserve session_id if remote missed it
@@ -184,30 +281,32 @@ export async function fetchAllSubmissions(limit = 500) {
 /**
  * Fetch recent student submissions
  */
-export async function fetchRecentSubmissions(limit = 10) {
-  const res = await fetchAllSubmissions(limit);
+export async function fetchRecentSubmissions({ limit = 10, allowedSessionIds = null, user = null } = {}) {
+  const res = await fetchAllSubmissions({ limit, allowedSessionIds, user });
   return res.data || [];
 }
 
 /**
  * Delete a submission by ID
  */
-export async function deleteSubmission(id) {
+export async function deleteSubmission(id, user = null) {
   const strId = String(id);
+  const ns = getUserNamespace(user);
 
   // 1. Add to deleted IDs in localStorage (permanent tombstone)
   try {
-    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
     if (!deletedList.includes(strId)) {
       deletedList.push(strId);
-      localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+      localStorage.setItem(`geo_deleted_submission_ids_${ns}`, JSON.stringify(deletedList));
     }
   } catch (e) {}
 
   // 2. Delete from localStorage geo_quiz_submissions
   try {
-    const local = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
+    const local = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
     const filtered = local.filter(item => String(item.id) !== strId);
+    localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filtered));
     localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
   } catch (e) {}
 
@@ -235,18 +334,20 @@ export async function deleteSubmission(id) {
 /**
  * Reset all submissions for a specific session
  */
-export async function resetSessionSubmissions(sessionId, currentSubmissions = []) {
+export async function resetSessionSubmissions(sessionId, currentSubmissions = [], user = null) {
   const sid = String(sessionId || '1');
+  const ns = getUserNamespace(user);
   const nowIso = new Date().toISOString();
 
   // 1. Record session reset timestamp
   try {
+    localStorage.setItem(`geo_session_reset_${ns}_${sid}`, nowIso);
     localStorage.setItem(`geo_session_reset_${sid}`, nowIso);
   } catch (e) {}
 
   // 2. Add all current matching IDs to deleted blacklist
   try {
-    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
     currentSubmissions.forEach(sub => {
       const subSid = String(sub.session_id || '1');
       if (subSid === sid && sub.id) {
@@ -255,13 +356,14 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
         }
       }
     });
-    localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+    localStorage.setItem(`geo_deleted_submission_ids_${ns}`, JSON.stringify(deletedList));
   } catch (e) {}
 
   // 3. Clear local quiz submissions for this session
   try {
-    const local = JSON.parse(localStorage.getItem('geo_quiz_submissions') || '[]');
+    const local = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
     const filtered = local.filter(sub => String(sub.session_id || '1') !== sid);
+    localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filtered));
     localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
   } catch (e) {}
 
@@ -339,5 +441,6 @@ export async function getCurrentUser() {
     return null;
   }
 }
+
 
 
