@@ -11,7 +11,7 @@ import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
-import { signOutUser, getUserNamespace, getStudentShareUrl } from './utils/supabaseService';
+import { signOutUser, getUserNamespace, getStudentShareUrl, subscribeSessionConfig, fetchSessionConfigRemote } from './utils/supabaseService';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -56,6 +56,8 @@ export default function App() {
       return null;
     }
   });
+  const [sessionIsOpen, setSessionIsOpen] = useState(true);
+  const [sessionAllowExplore, setSessionAllowExplore] = useState(true);
 
   // Persist activeView to LocalStorage
   useEffect(() => {
@@ -181,12 +183,71 @@ export default function App() {
   // Determine effective session ID
   const effectiveSessionId = currentSession?.id || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('session') : null) || '1';
 
+  // Realtime subscription & synchronization for session configurations (isOpen, allowExplore, categoryFilter)
+  useEffect(() => {
+    if (!effectiveSessionId) return;
+
+    // 1. Initial fetch from remote/cache
+    fetchSessionConfigRemote(effectiveSessionId).then(cfg => {
+      if (cfg) {
+        if (cfg.isOpen !== undefined) setSessionIsOpen(Boolean(cfg.isOpen));
+        if (cfg.allowExplore !== undefined) setSessionAllowExplore(Boolean(cfg.allowExplore));
+        if (cfg.categoryFilter) setUrlCategory(cfg.categoryFilter);
+      }
+    });
+
+    // 2. Realtime Broadcast Listener (Sub-100ms ultra-fast response)
+    const unsubscribe = subscribeSessionConfig(effectiveSessionId, (payload) => {
+      if (payload) {
+        if (payload.isOpen !== undefined) {
+          setSessionIsOpen(Boolean(payload.isOpen));
+        }
+        if (payload.allowExplore !== undefined) {
+          setSessionAllowExplore(Boolean(payload.allowExplore));
+        }
+        if (payload.categoryFilter) {
+          setUrlCategory(payload.categoryFilter);
+        }
+        if (payload.title) {
+          setCurrentSession(prev => ({
+            ...(prev || { id: effectiveSessionId }),
+            title: payload.title,
+            isOpen: payload.isOpen !== undefined ? payload.isOpen : prev?.isOpen,
+            allowExplore: payload.allowExplore !== undefined ? payload.allowExplore : prev?.allowExplore,
+            categoryFilter: payload.categoryFilter || prev?.categoryFilter
+          }));
+        }
+      }
+    });
+
+    // 3. Fast fallback interval check (every 2.5s) to guarantee consistency even through network blips
+    const timer = setInterval(() => {
+      fetchSessionConfigRemote(effectiveSessionId).then(cfg => {
+        if (cfg) {
+          if (cfg.isOpen !== undefined) setSessionIsOpen(Boolean(cfg.isOpen));
+          if (cfg.allowExplore !== undefined) setSessionAllowExplore(Boolean(cfg.allowExplore));
+          if (cfg.categoryFilter) setUrlCategory(cfg.categoryFilter);
+        }
+      });
+    }, 2500);
+
+    return () => {
+      unsubscribe?.();
+      clearInterval(timer);
+    };
+  }, [effectiveSessionId]);
+
   // Determine whether textbook exploration tab is allowed in QuizModal
   const allowExplore = Boolean(user)
     ? true
-    : (currentSession?.allowExplore !== undefined
-        ? currentSession.allowExplore !== false
-        : (urlExplore !== null ? urlExplore !== '0' : true));
+    : (sessionAllowExplore !== undefined
+        ? sessionAllowExplore
+        : (currentSession?.allowExplore !== undefined
+            ? currentSession.allowExplore !== false
+            : (urlExplore !== null ? urlExplore !== '0' : true)));
+
+  // Determine whether submissions/inputs are allowed in QuizModal
+  const isSubmissionOpen = Boolean(user) ? true : sessionIsOpen;
 
   // Completed IDs & Typed Answers isolated per session
   const [completedIds, setCompletedIds] = useState(() => {
@@ -429,6 +490,7 @@ export default function App() {
           studentUser={studentUser}
           sessionId={effectiveSessionId}
           allowExplore={allowExplore}
+          isOpen={isSubmissionOpen}
         />
       )}
 

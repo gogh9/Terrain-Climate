@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
@@ -275,13 +275,29 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     } catch (e) {}
   }, []);
 
-  // Save sessions to LocalStorage per user account
+  // Save sessions to LocalStorage per user account and sync to active channels
   useEffect(() => {
     try {
       localStorage.setItem(`geo_map_sessions_${userNs}`, JSON.stringify(sessions));
     } catch (e) {
       console.warn('Session save error', e);
     }
+
+    // Subscribe all sessions to answer student config requests in real time
+    const cleanups = sessions.map(s => {
+      return subscribeSessionConfig(
+        s.id,
+        null,
+        () => {
+          const found = sessions.find(item => String(item.id) === String(s.id));
+          return found || null;
+        }
+      );
+    });
+
+    return () => {
+      cleanups.forEach(fn => fn?.());
+    };
   }, [sessions, userNs]);
 
   // Ref to hold current session IDs for safe background polling
@@ -633,20 +649,35 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const handleToggleOpen = (sessionId) => {
     sound.playClick();
     const strId = String(sessionId);
-    setSessions(prev => prev.map(s => String(s.id) === strId ? { ...s, isOpen: !s.isOpen } : s));
+    setSessions(prev => {
+      const updated = prev.map(s => {
+        if (String(s.id) === strId) {
+          const nextState = !s.isOpen;
+          broadcastSessionConfig(strId, { ...s, isOpen: nextState });
+          return { ...s, isOpen: nextState };
+        }
+        return s;
+      });
+      return updated;
+    });
   };
 
   // Toggle Textbook Exploration Permission (allowExplore)
   const handleToggleExplore = (sessionId) => {
     sound.playClick();
     const strId = String(sessionId);
-    setSessions(prev => prev.map(s => {
-      if (String(s.id) === strId) {
-        const currentVal = s.allowExplore !== false;
-        return { ...s, allowExplore: !currentVal };
-      }
-      return s;
-    }));
+    setSessions(prev => {
+      const updated = prev.map(s => {
+        if (String(s.id) === strId) {
+          const currentVal = s.allowExplore !== false;
+          const nextVal = !currentVal;
+          broadcastSessionConfig(strId, { ...s, allowExplore: nextVal });
+          return { ...s, allowExplore: nextVal };
+        }
+        return s;
+      });
+      return updated;
+    });
   };
 
   // Toggle Category Filter (Landform / Climate)
@@ -654,7 +685,16 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     sound.playClick();
     const strId = String(sessionId);
     setActiveSessionId(strId);
-    setSessions(prev => prev.map(s => String(s.id) === strId ? { ...s, categoryFilter: category } : s));
+    setSessions(prev => {
+      const updated = prev.map(s => {
+        if (String(s.id) === strId) {
+          broadcastSessionConfig(strId, { ...s, categoryFilter: category });
+          return { ...s, categoryFilter: category };
+        }
+        return s;
+      });
+      return updated;
+    });
   };
 
   // Copy Student Distribution Link

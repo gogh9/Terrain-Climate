@@ -223,6 +223,7 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
 
   const isSubmissionValid = (item) => {
     if (!item) return false;
+    if (item.location_id === '__session_config__') return false;
     if (item.id && deletedIds.has(String(item.id))) return false;
     
     const sid = String(item.session_id || '1');
@@ -483,6 +484,167 @@ export async function getCurrentUser() {
   } catch (e) {
     return null;
   }
+}
+
+/**
+ * Active Supabase Realtime channels map
+ */
+const activeChannels = new Map();
+
+/**
+ * Get or create Realtime broadcast channel for a session
+ */
+export function getSessionChannel(sessionId) {
+  const sid = String(sessionId || '1');
+  const channelName = `session_sync_${sid}`;
+  if (activeChannels.has(channelName)) {
+    return activeChannels.get(channelName);
+  }
+  const channel = supabase.channel(channelName, {
+    config: {
+      broadcast: { self: false }
+    }
+  });
+  channel.subscribe();
+  activeChannels.set(channelName, channel);
+  return channel;
+}
+
+/**
+ * Broadcast session configuration changes in real-time (sub-100ms)
+ * and asynchronously persist to Supabase / LocalStorage
+ */
+export async function broadcastSessionConfig(sessionId, config) {
+  const sid = String(sessionId || '1');
+  const payload = {
+    sessionId: sid,
+    isOpen: config.isOpen !== undefined ? Boolean(config.isOpen) : true,
+    allowExplore: config.allowExplore !== undefined ? Boolean(config.allowExplore) : true,
+    categoryFilter: config.categoryFilter || 'landform',
+    title: config.title || '',
+    updatedAt: Date.now()
+  };
+
+  // 1. Broadcast immediately via Supabase Realtime channel
+  try {
+    const channel = getSessionChannel(sid);
+    channel.send({
+      type: 'broadcast',
+      event: 'config_change',
+      payload
+    });
+  } catch (e) {
+    console.warn('Realtime broadcast warning:', e);
+  }
+
+  // 2. Persist to localStorage cache
+  try {
+    localStorage.setItem(`geo_session_remote_config_${sid}`, JSON.stringify(payload));
+  } catch (e) {}
+
+  // 3. Persist to Supabase quiz_submissions table as system config record
+  try {
+    await supabase.from('quiz_submissions').insert([{
+      session_id: sid,
+      location_id: '__session_config__',
+      location_title: '__session_config__',
+      student_name: '__SYSTEM__',
+      answer_name: config.categoryFilter || 'landform',
+      answer_feature: JSON.stringify(payload),
+      score: 100,
+      created_at: new Date().toISOString()
+    }]);
+  } catch (e) {
+    console.warn('Config remote persist warning:', e);
+  }
+
+  return payload;
+}
+
+/**
+ * Subscribe to session config changes in real-time
+ */
+export function subscribeSessionConfig(sessionId, onConfigUpdate, onRequestConfig = null) {
+  const sid = String(sessionId || '1');
+  const channelName = `session_sync_${sid}`;
+  
+  const channel = supabase.channel(channelName, {
+    config: {
+      broadcast: { self: false }
+    }
+  });
+
+  channel
+    .on('broadcast', { event: 'config_change' }, (event) => {
+      if (event?.payload && String(event.payload.sessionId || sid) === sid) {
+        if (onConfigUpdate) onConfigUpdate(event.payload);
+      }
+    })
+    .on('broadcast', { event: 'request_config' }, () => {
+      if (onRequestConfig) {
+        const cfg = onRequestConfig();
+        if (cfg) {
+          channel.send({
+            type: 'broadcast',
+            event: 'config_change',
+            payload: { ...cfg, sessionId: sid, updatedAt: Date.now() }
+          });
+        }
+      }
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        // Ping for current config
+        channel.send({
+          type: 'broadcast',
+          event: 'request_config',
+          payload: { sessionId: sid, reqTime: Date.now() }
+        });
+      }
+    });
+
+  activeChannels.set(channelName, channel);
+
+  return () => {
+    try {
+      supabase.removeChannel(channel);
+      activeChannels.delete(channelName);
+    } catch (e) {}
+  };
+}
+
+/**
+ * Fetch latest remote config for a session (from Supabase DB or cache)
+ */
+export async function fetchSessionConfigRemote(sessionId) {
+  const sid = String(sessionId || '1');
+  try {
+    const { data, error } = await supabase
+      .from('quiz_submissions')
+      .select('*')
+      .eq('session_id', sid)
+      .eq('location_id', '__session_config__')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!error && data && data.length > 0 && data[0].answer_feature) {
+      const parsed = JSON.parse(data[0].answer_feature);
+      if (parsed) {
+        localStorage.setItem(`geo_session_remote_config_${sid}`, JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Fetch session remote config error:', e);
+  }
+
+  // Fallback to local cache
+  try {
+    const cached = localStorage.getItem(`geo_session_remote_config_${sid}`);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+
+  return null;
 }
 
 

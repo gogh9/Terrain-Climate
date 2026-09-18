@@ -30,9 +30,11 @@ export default function QuizModal({
   user,
   studentUser,
   sessionId = '1',
-  allowExplore = true
+  allowExplore = true,
+  isOpen = true
 }) {
   const canExplore = Boolean(user) || allowExplore !== false;
+  const isInputAllowed = Boolean(user) || isOpen !== false;
   const [activeTab, setActiveTab] = useState('quiz');
 
   useEffect(() => {
@@ -98,6 +100,10 @@ export default function QuizModal({
   // Evaluate Student Submission
   const handleSubmitQuiz = (e) => {
     e.preventDefault();
+    if (!isInputAllowed) {
+      alert('현재 선생님께서 학습 입력을 마감하셨습니다.');
+      return;
+    }
     const effectiveStudentName = studentUser?.fullName || studentName?.trim() || localStorage.getItem('geo_last_student_name') || '익명 학생';
 
     const cleanName = inputName.trim();
@@ -510,6 +516,27 @@ export default function QuizModal({
             {activeTab === 'quiz' && (
               <form onSubmit={handleSubmitQuiz} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
+                {/* Input Lock Notification Banner if locked by teacher */}
+                {!isInputAllowed && (
+                  <div
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.45)',
+                      color: '#f87171',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      animation: 'fadeIn 0.2s ease'
+                    }}
+                  >
+                    <span>🔒</span> 현재 선생님께서 학습 입력을 마감하셨습니다. (조회만 가능합니다)
+                  </div>
+                )}
+
                 {/* Input 1: Landform or Climate (Clickable Choices) */}
                 <div>
                   <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>
@@ -522,7 +549,9 @@ export default function QuizModal({
                         <button
                           key={opt.label}
                           type="button"
+                          disabled={!isInputAllowed}
                           onClick={() => {
+                            if (!isInputAllowed) return;
                             sound.playClick();
                             setInputName(opt.label);
                           }}
@@ -531,12 +560,13 @@ export default function QuizModal({
                             minWidth: location.category === 'climate' ? '110px' : '65px',
                             padding: '0.75rem 0.5rem',
                             background: isSelected ? '#1ed760' : '#1f1f1f',
-                            color: isSelected ? '#000000' : '#ffffff',
+                            color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
                             border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
                             borderRadius: '12px',
                             fontSize: '0.92rem',
                             fontWeight: isSelected ? 800 : 600,
-                            cursor: 'pointer',
+                            cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                            opacity: isInputAllowed ? 1 : 0.6,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -546,13 +576,13 @@ export default function QuizModal({
                             transition: 'all 0.15s ease'
                           }}
                           onMouseEnter={(e) => {
-                            if (!isSelected) {
+                            if (isInputAllowed && !isSelected) {
                               e.currentTarget.style.borderColor = '#1ed760';
                               e.currentTarget.style.background = '#282828';
                             }
                           }}
                           onMouseLeave={(e) => {
-                            if (!isSelected) {
+                            if (isInputAllowed && !isSelected) {
                               e.currentTarget.style.borderColor = '#404040';
                               e.currentTarget.style.background = '#1f1f1f';
                             }
@@ -591,15 +621,16 @@ export default function QuizModal({
                   <textarea
                     rows={4}
                     value={inputFeature}
+                    disabled={!isInputAllowed}
                     onChange={(e) => setInputFeature(e.target.value)}
                     onPaste={(e) => e.preventDefault()}
                     onDrop={(e) => e.preventDefault()}
-                    placeholder="교과서에서 학습했거나 사진을 통해서 알 수 있는 지형/기후 특징, 주민 생활 모습(의식주 등)을 핵심 키워드 2개 이상 포함하여 20자 이상 자세히 적어보세요."
+                    placeholder={isInputAllowed ? "교과서에서 학습했거나 사진을 통해서 알 수 있는 지형/기후 특징, 주민 생활 모습(의식주 등)을 핵심 키워드 2개 이상 포함하여 20자 이상 자세히 적어보세요." : "선생님께서 학습 입력을 마감하셨습니다."}
                     style={{
                       width: '100%',
                       padding: '0.9rem 1.2rem',
-                      background: '#1f1f1f',
-                      color: '#ffffff',
+                      background: isInputAllowed ? '#1f1f1f' : '#181818',
+                      color: isInputAllowed ? '#ffffff' : '#888888',
                       borderRadius: '12px',
                       boxShadow: 'rgb(18, 18, 18) 0px 1px 0px, rgb(124, 124, 124) 0px 0px 0px 1px inset',
                       border: 'none',
@@ -607,7 +638,9 @@ export default function QuizModal({
                       lineHeight: '1.6',
                       resize: 'none',
                       outline: 'none',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      cursor: isInputAllowed ? 'text' : 'not-allowed',
+                      opacity: isInputAllowed ? 1 : 0.7
                     }}
                   />
 
@@ -633,8 +666,30 @@ export default function QuizModal({
                 </div>
 
                 {/* Submit Button */}
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.9rem', fontSize: '1rem', fontWeight: 700 }}>
-                  <Sparkles size={18} /> 정답 제출 & 학습 확인
+                <button
+                  type="submit"
+                  disabled={!isInputAllowed}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '0.9rem',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    opacity: isInputAllowed ? 1 : 0.6,
+                    cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                    background: isInputAllowed ? '#1ed760' : '#282828',
+                    color: isInputAllowed ? '#000000' : '#888888',
+                    border: isInputAllowed ? 'none' : '1px solid #404040'
+                  }}
+                >
+                  {isInputAllowed ? (
+                    <>
+                      <Sparkles size={18} /> 정답 제출 & 학습 확인
+                    </>
+                  ) : (
+                    <>
+                      🔒 입력 마감 (선생님 허용 대기 중)
+                    </>
+                  )}
                 </button>
 
                 {/* Feedback Box */}
