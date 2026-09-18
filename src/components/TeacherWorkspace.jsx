@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
@@ -658,14 +658,16 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   };
 
   // Copy Student Distribution Link
-  const handleCopyLink = (session) => {
+  const handleCopyLink = async (session) => {
     sound.playClick();
-    const cat = session.categoryFilter === 'climate' ? 'climate' : 'landform';
-    const explore = session.allowExplore !== false ? '1' : '0';
-    const link = `${window.location.origin}/?session=${session.id}&category=${cat}&explore=${explore}`;
-    navigator.clipboard.writeText(link);
+    const link = getStudentShareUrl(session);
+    const success = await copyToClipboard(link);
     setCopiedId(session.id);
-    alert(`📋 학생 배부용 링크가 복사되었습니다!\n\n${link}`);
+    if (success) {
+      alert(`📋 학생 배부용 링크가 클립보드에 복사되었습니다!\n\n${link}\n\n클래스룸, 패들렛 등에 붙여넣기(Ctrl+V)하여 학생들에게 전달해 주세요.`);
+    } else {
+      window.prompt('학생 배부용 링크를 복사(Ctrl+C)하세요:', link);
+    }
     setTimeout(() => setCopiedId(null), 2500);
   };
 
@@ -1160,7 +1162,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     🔗 배부 링크:
                   </span>
                   <span style={{ fontSize: '0.76rem', color: '#888888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {`${window.location.origin}/?session=${session.id}&category=${session.categoryFilter === 'climate' ? 'climate' : 'landform'}&explore=${session.allowExplore !== false ? '1' : '0'}`}
+                    {getStudentShareUrl(session)}
                   </span>
                 </div>
                 <span style={{ fontSize: '0.72rem', background: '#222222', color: '#a1a1aa', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>

@@ -11,7 +11,7 @@ import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
-import { signOutUser, getUserNamespace } from './utils/supabaseService';
+import { signOutUser, getUserNamespace, getStudentShareUrl } from './utils/supabaseService';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -86,13 +86,14 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check URL parameters for Student Session links (?session=...&category=...&explore=...)
+  // Check URL parameters for Student Session links (?session=...&category=...&explore=...&title=...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session');
       const categoryParam = params.get('category');
       const exploreParam = params.get('explore');
+      const titleParam = params.get('title');
       if (sessionId) {
         setSessionParam(sessionId);
         const savedView = localStorage.getItem('geo_active_view');
@@ -132,6 +133,15 @@ export default function App() {
           if (found.categoryFilter) {
             setUrlCategory(found.categoryFilter);
           }
+        } else {
+          // If not found in localStorage (e.g. on student device), reconstruct session object from URL params
+          setCurrentSession({
+            id: sessionId,
+            title: titleParam ? decodeURIComponent(titleParam) : '우리 반 세계지도',
+            categoryFilter: categoryParam || 'landform',
+            allowExplore: exploreParam !== '0',
+            isOpen: true
+          });
         }
       }
       if (categoryParam) {
@@ -350,9 +360,7 @@ export default function App() {
           }
           setActiveView('map');
           try {
-            const cat = session.categoryFilter === 'landform' ? 'landform' : 'climate';
-            const explore = session.allowExplore !== false ? '1' : '0';
-            const newUrl = `${window.location.pathname}?session=${session.id}&category=${cat}&explore=${explore}`;
+            const newUrl = getStudentShareUrl(session);
             window.history.replaceState(null, '', newUrl);
           } catch (e) {
             console.warn(e);

@@ -19,6 +19,49 @@ export function generateSessionId(user) {
 }
 
 /**
+ * Generate a student distribution link for a given session
+ */
+export function getStudentShareUrl(session) {
+  if (!session) return typeof window !== 'undefined' ? window.location.href : '';
+  if (typeof window === 'undefined') return '';
+  const baseUrl = window.location.origin + window.location.pathname;
+  const cat = session.categoryFilter || 'landform';
+  const explore = session.allowExplore !== false ? '1' : '0';
+  const title = encodeURIComponent(session.title || '');
+  return `${baseUrl}?session=${session.id}&category=${cat}&explore=${explore}&title=${title}`;
+}
+
+/**
+ * Robust clipboard copy with fallback
+ */
+export async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn('navigator.clipboard failed, attempting fallback', err);
+    }
+  }
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('Clipboard copy fallback error:', err);
+    return false;
+  }
+}
+
+/**
  * Save quiz submission to Supabase database.
  * Table name: `quiz_submissions`
  */
