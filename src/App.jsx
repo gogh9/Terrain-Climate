@@ -20,7 +20,16 @@ export default function App() {
   // User Auth & View Mode
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('geo_user_role') || 'student');
+  const [userRole, setUserRole] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('session')) {
+        return 'student';
+      }
+      return localStorage.getItem('geo_user_role') || 'student';
+    } catch {
+      return 'student';
+    }
+  });
   // Student user starts as null on fresh link entry so the login screen is always presented
   const [studentUser, setStudentUser] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -339,7 +348,7 @@ export default function App() {
         sessionInfo={currentSession}
         onStudentLogin={handleStudentLogin}
         setUserRole={setUserRole}
-        initialRole={userRole}
+        initialRole={isStudentSession ? 'student' : userRole}
       />
     );
   }

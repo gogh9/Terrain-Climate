@@ -10,18 +10,17 @@ export default function LandingScreen({
   setUserRole,
   initialRole = null
 }) {
+  // If this is a student session link, default to student mode unconditionally
   const [studentMode, setStudentMode] = useState(() => {
-    if (initialRole === 'teacher') return false;
-    return isStudentSession;
+    if (isStudentSession) return true;
+    return initialRole !== 'teacher';
   });
 
   React.useEffect(() => {
-    if (initialRole === 'teacher') {
-      setStudentMode(false);
-    } else {
-      setStudentMode(isStudentSession);
+    if (isStudentSession) {
+      setStudentMode(true);
     }
-  }, [isStudentSession, initialRole]);
+  }, [isStudentSession]);
   const [studentClass, setStudentClass] = useState(() => {
     try {
       const saved = localStorage.getItem('geo_student_user');
@@ -142,7 +141,7 @@ export default function LandingScreen({
         {sessionInfo && (
           <div
             style={{
-              marginBottom: '1.5rem',
+              marginBottom: '1.2rem',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
@@ -159,6 +158,70 @@ export default function LandingScreen({
             <span>{sessionInfo.title || '우리 반 세계지도'} 참여 모드</span>
           </div>
         )}
+
+        {/* Mode Switch Tabs */}
+        <div
+          style={{
+            display: 'flex',
+            width: '100%',
+            background: '#242424',
+            borderRadius: '9999px',
+            padding: '4px',
+            marginBottom: '1.5rem',
+            border: '1px solid #333333'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick();
+              setStudentMode(true);
+            }}
+            style={{
+              flex: 1,
+              padding: '0.65rem',
+              borderRadius: '9999px',
+              border: 'none',
+              background: studentMode ? '#1ed760' : 'transparent',
+              color: studentMode ? '#000000' : '#a1a1aa',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            🎒 학생 참여
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              sound.playClick();
+              setStudentMode(false);
+            }}
+            style={{
+              flex: 1,
+              padding: '0.65rem',
+              borderRadius: '9999px',
+              border: 'none',
+              background: !studentMode ? '#1ed760' : 'transparent',
+              color: !studentMode ? '#000000' : '#a1a1aa',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            👨‍🏫 교사 로그인
+          </button>
+        </div>
 
         {studentMode ? (
           /* Student Class, Number & Name Login Form */
