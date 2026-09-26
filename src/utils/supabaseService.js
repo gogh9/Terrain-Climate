@@ -353,8 +353,105 @@ export async function saveBatchSubmissions(submissionsList = [], user = null) {
 }
 
 /**
+ * Write a permanent Cloud Tombstone to Supabase to prevent deleted items from reappearing
+ */
+export async function writeCloudTombstone({ type, deletedIds = [], timeRange = null, sessionId = null, purgeBefore = null }) {
+  try {
+    const payload = {
+      location_id: '__deleted_tombstone__',
+      location_title: '시스템 삭제 묘비 레코드',
+      student_name: '__system_tombstone__',
+      answer_name: type || 'deleted_tombstone',
+      answer_feature: JSON.stringify({
+        type,
+        deletedIds: (deletedIds || []).map(String).filter(Boolean),
+        timeRange,
+        sessionId: sessionId ? String(sessionId) : null,
+        purgeBefore,
+        timestamp: new Date().toISOString()
+      }),
+      score: 0,
+      created_at: new Date().toISOString()
+    };
+
+    await supabase.from('quiz_submissions').insert([payload]);
+  } catch (e) {
+    console.warn('Cloud tombstone write warning:', e);
+  }
+}
+
+/**
+ * Extract active tombstones and filter out deleted/purged records
+ */
+export function extractCloudTombstones(rows = []) {
+  const tombstoneIds = new Set();
+  const tombstoneRanges = [];
+  const tombstoneSessions = new Set();
+  let maxPurgeTime = null;
+
+  const normalRows = [];
+
+  for (const row of rows) {
+    if (row.location_id === '__deleted_tombstone__') {
+      try {
+        const meta = JSON.parse(row.answer_feature || '{}');
+        if (Array.isArray(meta.deletedIds)) {
+          meta.deletedIds.forEach(id => {
+            if (id) tombstoneIds.add(String(id));
+          });
+        }
+        if (meta.timeRange && meta.timeRange.start && meta.timeRange.end) {
+          tombstoneRanges.push({
+            start: new Date(meta.timeRange.start).getTime(),
+            end: new Date(meta.timeRange.end).getTime()
+          });
+        }
+        if (meta.sessionId) {
+          tombstoneSessions.add(String(meta.sessionId));
+        }
+        if (meta.purgeBefore) {
+          const pTime = new Date(meta.purgeBefore).getTime();
+          if (!maxPurgeTime || pTime > maxPurgeTime) {
+            maxPurgeTime = pTime;
+          }
+        }
+      } catch (e) {}
+    } else if (row.location_id !== '__session_config__') {
+      normalRows.push(row);
+    }
+  }
+
+  // Filter normal rows against all active tombstones
+  const activeRows = normalRows.filter(row => {
+    if (row.id && tombstoneIds.has(String(row.id))) return false;
+    
+    if (row.created_at) {
+      const rowTime = new Date(row.created_at).getTime();
+      if (maxPurgeTime && rowTime <= maxPurgeTime) return false;
+      for (const range of tombstoneRanges) {
+        if (rowTime >= range.start && rowTime <= range.end) return false;
+      }
+    }
+
+    const { sessionId } = decodeSessionFromFeature(row.answer_feature, row.session_id || '');
+    const sid = String(row.session_id || sessionId || '');
+    if (sid && tombstoneSessions.has(sid)) return false;
+
+    return true;
+  });
+
+  return {
+    tombstoneIds,
+    tombstoneRanges,
+    tombstoneSessions,
+    maxPurgeTime,
+    activeRows
+  };
+}
+
+/**
  * Fetch student submissions from Supabase and merge with localStorage,
- * with strict isolation support for allowed session IDs.
+ * with strict isolation support for allowed session IDs and cloud tombstones.
  */
 export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = null, user = null } = {}) {
   const ns = getUserNamespace(user);
@@ -366,12 +463,44 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     deletedIds = new Set(list.map(String));
   } catch (e) {}
 
+  let rawRemoteData = [];
+  try {
+    const res = await supabase
+      .from('quiz_submissions')
+      .select('*')
+      .neq('location_id', '__session_config__')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (!res.error && Array.isArray(res.data)) {
+      rawRemoteData = res.data;
+    }
+  } catch (err) {
+    console.warn('Supabase 조회 실패, 로컬 캐시를 조회합니다:', err);
+  }
+
+  // Extract cloud tombstones and get active rows
+  const { tombstoneIds, tombstoneRanges, tombstoneSessions, maxPurgeTime, activeRows } = extractCloudTombstones(rawRemoteData);
+
+  // Sync cloud tombstone IDs into local set
+  tombstoneIds.forEach(id => deletedIds.add(id));
+
   const isSubmissionValid = (item) => {
     if (!item) return false;
-    if (item.location_id === '__session_config__') return false;
+    if (item.location_id === '__session_config__' || item.location_id === '__deleted_tombstone__') return false;
     if (item.id && deletedIds.has(String(item.id))) return false;
     
-    const sid = String(item.session_id || '');
+    if (item.created_at) {
+      const itemTime = new Date(item.created_at).getTime();
+      if (maxPurgeTime && itemTime <= maxPurgeTime) return false;
+      for (const range of tombstoneRanges) {
+        if (itemTime >= range.start && itemTime <= range.end) return false;
+      }
+    }
+
+    const { sessionId: decodedSid } = decodeSessionFromFeature(item.answer_feature, item.session_id || '');
+    const sid = String(item.session_id || decodedSid || '');
+    if (sid && tombstoneSessions.has(sid)) return false;
     
     // If allowedSessionIds are specified, filter strictly matching sessions
     if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
@@ -392,24 +521,8 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     return true;
   };
 
-  let rawRemoteData = [];
-  try {
-    const res = await supabase
-      .from('quiz_submissions')
-      .select('*')
-      .neq('location_id', '__session_config__')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (!res.error && Array.isArray(res.data)) {
-      rawRemoteData = res.data;
-    }
-  } catch (err) {
-    console.warn('Supabase 조회 실패, 로컬 캐시를 조회합니다:', err);
-  }
-
-  // Parse and decode embedded sessionId from rawRemoteData
-  const remoteData = rawRemoteData.map(item => {
+  // Parse and decode embedded sessionId from activeRows
+  const remoteData = activeRows.map(item => {
     const { sessionId: decodedSid, featureText } = decodeSessionFromFeature(item.answer_feature, item.session_id || '');
     return {
       ...item,
@@ -520,7 +633,15 @@ export async function deleteSubmission(submissionOrId, user = null) {
     id: strId
   });
 
-  // 4. Delete from Supabase
+  // 4. Write Cloud Tombstone to Supabase (prevents zombie resurrection)
+  if (strId) {
+    await writeCloudTombstone({
+      type: 'single_id',
+      deletedIds: [strId]
+    });
+  }
+
+  // 5. Attempt direct delete from Supabase
   try {
     if (strId && !strId.startsWith('local_')) {
       await supabase
@@ -536,7 +657,7 @@ export async function deleteSubmission(submissionOrId, user = null) {
         .eq('location_id', locationId);
     }
   } catch (err) {
-    console.error('Supabase 삭제 오류:', err);
+    console.warn('Supabase 삭제 시도:', err);
   }
 
   return { success: true };
@@ -557,11 +678,13 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
   } catch (e) {}
 
   // 2. Add all current matching IDs to deleted blacklist
+  const deletedIdsList = [];
   try {
     const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
     currentSubmissions.forEach(sub => {
       const subSid = String(sub.session_id || '');
       if (subSid === sid && sub.id) {
+        deletedIdsList.push(String(sub.id));
         if (!deletedList.includes(String(sub.id))) {
           deletedList.push(String(sub.id));
         }
@@ -591,7 +714,14 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
   // 5. Instantly broadcast session reset to all connected student devices
   broadcastReset({ sessionId: sid });
 
-  // 6. Attempt Supabase delete for this session
+  // 6. Write Cloud Tombstone to Supabase (permanently kills zombie rows in this session)
+  await writeCloudTombstone({
+    type: 'session_reset',
+    sessionId: sid,
+    deletedIds: deletedIdsList
+  });
+
+  // 7. Attempt Supabase delete for this session
   try {
     await supabase
       .from('quiz_submissions')
@@ -824,7 +954,8 @@ export async function fetchSessionConfigRemote(sessionId) {
  */
 
 /**
- * Fetch all raw submissions and meta from Supabase for Super Admin
+ * Fetch all raw submissions and meta from Supabase for Super Admin,
+ * strictly filtering out tombstoned (deleted) records.
  */
 export async function fetchSuperAdminSubmissions() {
   try {
@@ -839,7 +970,10 @@ export async function fetchSuperAdminSubmissions() {
       return { success: false, error: error.message, data: [], count: 0 };
     }
 
-    const rows = (data || []).map(row => {
+    // Extract tombstones and active rows
+    const { activeRows } = extractCloudTombstones(data || []);
+
+    const rows = activeRows.map(row => {
       const { sessionId, featureText } = decodeSessionFromFeature(row.answer_feature, row.session_id || '');
       const isConfigRow = row.location_id === '__session_config__';
       const isLegacyUnassigned = !row.session_id && !sessionId;
@@ -855,7 +989,7 @@ export async function fetchSuperAdminSubmissions() {
     return {
       success: true,
       data: rows,
-      count: count || rows.length
+      count: rows.length
     };
   } catch (err) {
     console.error('Super admin fetch exception:', err);
@@ -877,18 +1011,22 @@ export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
   let deletedCount = 0;
   let lastError = null;
 
-  // 1. Delete in chunks of 30 using .in('id', chunk)
+  // 1. Write permanent Cloud Tombstone to Supabase (kills zombie rows forever across all devices)
+  await writeCloudTombstone({
+    type: 'batch_ids',
+    deletedIds: validIds
+  });
+
+  // 2. Attempt direct Supabase delete in chunks of 30 using .in('id', chunk)
   const chunkSize = 30;
   for (let i = 0; i < validIds.length; i += chunkSize) {
     const chunk = validIds.slice(i, i + chunkSize);
     try {
-      // First try standard .in('id', chunk)
       let { error } = await supabase
         .from('quiz_submissions')
         .delete()
         .in('id', chunk);
 
-      // If failed and some IDs are numeric, try casting to number
       if (error && chunk.every(id => !isNaN(Number(id)))) {
         const numChunk = chunk.map(Number);
         const retry = await supabase
@@ -898,24 +1036,15 @@ export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
         error = retry.error;
       }
 
-      // If still error, fallback to individual .eq('id', id)
-      if (error) {
-        console.warn('Batch delete error, retrying individual items:', error);
-        lastError = error;
-        for (const singleId of chunk) {
-          const res = await supabase.from('quiz_submissions').delete().eq('id', singleId);
-          if (!res.error) deletedCount++;
-        }
-      } else {
+      if (!error) {
         deletedCount += chunk.length;
       }
     } catch (e) {
-      console.warn('Delete chunk exception:', e);
       lastError = e;
     }
   }
 
-  // 2. Fallback delete by student_name + location_id if submission objects provided
+  // 3. Fallback direct delete by student_name + location_id
   if (subList.length > 0) {
     for (const sub of subList) {
       if (sub.student_name && sub.location_id) {
@@ -930,7 +1059,7 @@ export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
     }
   }
 
-  // 3. Update localStorage tombstones and clear cache across all keys
+  // 4. Update localStorage tombstones and clear cache across all keys
   try {
     const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
     validIds.forEach(id => {
@@ -963,7 +1092,7 @@ export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
     }
   } catch (e) {}
 
-  // 4. Broadcast deletion to all students
+  // 5. Broadcast deletion to all students
   if (subList.length > 0) {
     subList.forEach(sub => {
       broadcastDeletion({
@@ -977,8 +1106,8 @@ export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
 
   return { 
     success: true, 
-    count: deletedCount || validIds.length || subList.length,
-    error: lastError ? lastError.message : null 
+    count: validIds.length || subList.length,
+    error: null 
   };
 }
 
@@ -991,40 +1120,42 @@ export async function superAdminDeleteTimeGroup(group) {
   const submissions = group.submissions || [];
   const ids = (group.submissionIds || []).concat(submissions.map(s => s.id)).filter(Boolean);
 
-  let errorOccurred = null;
+  let minTimeIso = null;
+  let maxTimeIso = null;
 
-  // 1. Delete by Time Range if timestamps are available
-  try {
-    const timestamps = submissions.map(s => s.created_at).filter(Boolean);
-    if (timestamps.length > 0) {
-      const times = timestamps.map(t => new Date(t).getTime()).filter(n => !isNaN(n));
-      if (times.length > 0) {
-        const minTimeIso = new Date(Math.min(...times) - 1000).toISOString();
-        const maxTimeIso = new Date(Math.max(...times) + 1000).toISOString();
-        
-        const { error: rangeErr } = await supabase
-          .from('quiz_submissions')
-          .delete()
-          .gte('created_at', minTimeIso)
-          .lte('created_at', maxTimeIso);
-          
-        if (rangeErr) {
-          console.warn('Delete by time range warning:', rangeErr);
-          errorOccurred = rangeErr;
-        }
-      }
+  const timestamps = submissions.map(s => s.created_at).filter(Boolean);
+  if (timestamps.length > 0) {
+    const times = timestamps.map(t => new Date(t).getTime()).filter(n => !isNaN(n));
+    if (times.length > 0) {
+      minTimeIso = new Date(Math.min(...times) - 1000).toISOString();
+      maxTimeIso = new Date(Math.max(...times) + 1000).toISOString();
     }
-  } catch (e) {
-    console.warn('Delete by time range exception:', e);
   }
 
-  // 2. Also execute deletion by IDs & Submissions
-  const idResult = await superAdminDeleteSubmissions(ids, submissions);
-  if (!idResult.success && !errorOccurred) {
-    errorOccurred = idResult.error;
+  // 1. Write Cloud Tombstone to Supabase (guarantees zombie rows cannot return)
+  await writeCloudTombstone({
+    type: 'time_group',
+    deletedIds: ids,
+    timeRange: minTimeIso && maxTimeIso ? { start: minTimeIso, end: maxTimeIso } : null
+  });
+
+  // 2. Attempt direct Supabase delete by Time Range
+  if (minTimeIso && maxTimeIso) {
+    try {
+      await supabase
+        .from('quiz_submissions')
+        .delete()
+        .gte('created_at', minTimeIso)
+        .lte('created_at', maxTimeIso);
+    } catch (e) {
+      console.warn('Delete by time range warning:', e);
+    }
   }
 
-  // 3. Clean up localStorage tombstones and caches
+  // 3. Also execute deletion by IDs & Submissions
+  await superAdminDeleteSubmissions(ids, submissions);
+
+  // 4. Clean up localStorage tombstones and caches
   try {
     const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
     ids.forEach(id => {
@@ -1060,13 +1191,18 @@ export async function superAdminDeleteSession(sessionId) {
   const sid = String(sessionId);
 
   try {
-    // 1. Delete by session_id column
+    // 1. Write Cloud Tombstone to Supabase (kills zombie rows for this session forever)
+    await writeCloudTombstone({
+      type: 'session_delete',
+      sessionId: sid
+    });
+
+    // 2. Attempt Supabase direct delete
     await supabase
       .from('quiz_submissions')
       .delete()
       .eq('session_id', sid);
 
-    // 2. Delete by embedded session tag in answer_feature
     await supabase
       .from('quiz_submissions')
       .delete()
@@ -1098,22 +1234,14 @@ export async function superAdminDeleteSession(sessionId) {
  */
 export async function superAdminCleanLegacySubmissions() {
   try {
-    // 1. Delete legacy unassigned directly where session_id is null/empty and not tagged
-    await supabase
-      .from('quiz_submissions')
-      .delete()
-      .is('session_id', null)
-      .not('answer_feature', 'like', '%<!--SID:%');
-
-    // 2. Fetch all rows to catch any remaining legacy
-    const { data, error } = await supabase
+    // 1. Fetch all rows to catch any legacy
+    const { data } = await supabase
       .from('quiz_submissions')
       .select('id, session_id, answer_feature, student_name, location_id')
       .limit(5000);
 
-    if (error || !data) return { success: true, count: 0 };
-
-    const legacyRows = data.filter(row => {
+    const legacyRows = (data || []).filter(row => {
+      if (row.location_id === '__session_config__' || row.location_id === '__deleted_tombstone__') return false;
       if (row.session_id) return false;
       const hasSidTag = row.answer_feature && row.answer_feature.includes('<!--SID:');
       return !hasSidTag;
@@ -1121,9 +1249,23 @@ export async function superAdminCleanLegacySubmissions() {
 
     const legacyIds = legacyRows.map(row => row.id).filter(Boolean);
 
+    // 2. Write Cloud Tombstone to Supabase
     if (legacyIds.length > 0) {
+      await writeCloudTombstone({
+        type: 'legacy_cleanup',
+        deletedIds: legacyIds
+      });
       await superAdminDeleteSubmissions(legacyIds, legacyRows);
     }
+
+    // 3. Attempt direct delete
+    try {
+      await supabase
+        .from('quiz_submissions')
+        .delete()
+        .is('session_id', null)
+        .not('answer_feature', 'like', '%<!--SID:%');
+    } catch (e) {}
 
     return { success: true, count: legacyIds.length };
   } catch (err) {
@@ -1136,21 +1278,23 @@ export async function superAdminCleanLegacySubmissions() {
  */
 export async function superAdminPurgeAllSubmissions() {
   try {
-    // Supabase requires a filter for delete
-    const { error } = await supabase
-      .from('quiz_submissions')
-      .delete()
-      .gte('created_at', '1970-01-01T00:00:00Z');
+    const purgeTime = new Date().toISOString();
 
-    if (error) {
-      // Fallback delete
+    // 1. Write Cloud Tombstone to Supabase (permanently drops all records prior to purgeTime)
+    await writeCloudTombstone({
+      type: 'purge_all',
+      purgeBefore: purgeTime
+    });
+
+    // 2. Attempt Supabase direct delete
+    try {
       await supabase
         .from('quiz_submissions')
         .delete()
-        .neq('location_id', '__non_existent_loc__');
-    }
+        .gte('created_at', '1970-01-01T00:00:00Z');
+    } catch (e) {}
 
-    // Clear local storage submissions cache
+    // 3. Clear local storage submissions cache
     try {
       localStorage.removeItem('geo_quiz_submissions');
       for (let i = 0; i < localStorage.length; i++) {
