@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig, subscribeSubmissions } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
@@ -323,8 +323,24 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
   useEffect(() => {
     loadSubmissions();
-    const interval = setInterval(loadSubmissions, 10000); // 10 sec polling
-    return () => clearInterval(interval);
+
+    // Realtime Broadcast Subscription: Instant Sub-100ms update upon student submission
+    const unsubscribe = subscribeSubmissions((newSub) => {
+      if (newSub) {
+        setSubmissions(prev => {
+          const key = `${newSub.student_name}_${newSub.location_id}_${newSub.created_at?.slice(0, 16)}`;
+          const exists = prev.some(item => `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}` === key || item.id === newSub.id);
+          if (exists) return prev;
+          return [newSub, ...prev];
+        });
+      }
+    });
+
+    const interval = setInterval(loadSubmissions, 4000); // 4 sec fast polling
+    return () => {
+      unsubscribe?.();
+      clearInterval(interval);
+    };
   }, [sessions.length, userNs]);
 
   // Parse Uploaded Excel/CSV File

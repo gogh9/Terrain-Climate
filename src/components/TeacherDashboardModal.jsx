@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, RefreshCw, Download, Search, Users, FileText, Trash2, Award, Eye } from 'lucide-react';
-import { fetchAllSubmissions, deleteSubmission } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, subscribeSubmissions } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
 export default function TeacherDashboardModal({ onClose, locations = [], user = null }) {
@@ -24,6 +24,24 @@ export default function TeacherDashboardModal({ onClose, locations = [], user = 
 
   useEffect(() => {
     loadData();
+
+    // Realtime Broadcast Subscription
+    const unsubscribe = subscribeSubmissions((newSub) => {
+      if (newSub) {
+        setSubmissions(prev => {
+          const key = `${newSub.student_name}_${newSub.location_id}_${newSub.created_at?.slice(0, 16)}`;
+          const exists = prev.some(item => `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}` === key || item.id === newSub.id);
+          if (exists) return prev;
+          return [newSub, ...prev];
+        });
+      }
+    });
+
+    const interval = setInterval(loadData, 4000);
+    return () => {
+      unsubscribe?.();
+      clearInterval(interval);
+    };
   }, []);
 
   // Handle Refresh

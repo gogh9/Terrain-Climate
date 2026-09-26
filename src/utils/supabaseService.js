@@ -62,6 +62,55 @@ export async function copyToClipboard(text) {
 }
 
 /**
+// Global shared broadcast channel for submissions
+let submissionChannel = null;
+
+function getSubmissionChannel() {
+  if (!submissionChannel) {
+    submissionChannel = supabase.channel('submissions_realtime_sync', {
+      config: { broadcast: { self: false } }
+    });
+    submissionChannel.subscribe();
+  }
+  return submissionChannel;
+}
+
+/**
+ * Broadcast a new submission in real-time to all connected teacher screens
+ */
+export function broadcastSubmission(submission) {
+  try {
+    const ch = getSubmissionChannel();
+    ch.send({
+      type: 'broadcast',
+      event: 'new_submission',
+      payload: submission
+    });
+  } catch (e) {
+    console.warn('Broadcast submission warning:', e);
+  }
+}
+
+/**
+ * Subscribe to new student submissions in real time
+ */
+export function subscribeSubmissions(onNewSubmission) {
+  const ch = getSubmissionChannel();
+  
+  const listener = (event) => {
+    if (event?.payload && onNewSubmission) {
+      onNewSubmission(event.payload);
+    }
+  };
+
+  ch.on('broadcast', { event: 'new_submission' }, listener);
+
+  return () => {
+    // Keep channel alive, just stop listening if needed
+  };
+}
+
+/**
  * Save quiz submission to Supabase database.
  * Table name: `quiz_submissions`
  */
@@ -94,6 +143,9 @@ export async function saveQuizSubmission({
   } catch (e) {
     console.warn('Local save warning:', e);
   }
+
+  // Instantly broadcast to teacher in real time
+  broadcastSubmission(newSubmission);
 
   try {
     // 1st attempt: insert with session_id
@@ -141,6 +193,11 @@ export async function saveQuizSubmission({
     const resultData = (data && data.length > 0)
       ? data.map(d => ({ ...newSubmission, ...d, session_id: String(d.session_id || sessionId || '1') }))
       : [newSubmission];
+
+    // Re-broadcast enriched result if needed
+    if (resultData[0]) {
+      broadcastSubmission(resultData[0]);
+    }
 
     return { success: true, data: resultData };
   } catch (err) {
@@ -228,10 +285,11 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     
     const sid = String(item.session_id || '1');
     
-    // If allowedSessionIds are specified, strictly filter out foreign sessions
+    // If allowedSessionIds are specified, filter out non-matching sessions
     if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
       const allowedSet = new Set(allowedSessionIds.map(String));
-      if (!allowedSet.has(sid)) {
+      // Include '1' or missing session_id if first session '1' is allowed
+      if (!allowedSet.has(sid) && !(allowedSet.has('1') && (!item.session_id || item.session_id === '1'))) {
         return false;
       }
     }
@@ -249,24 +307,46 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
 
   let remoteData = [];
   try {
+    // 1st attempt: Query with in filter
     let query = supabase
       .from('quiz_submissions')
       .select('*')
+      .neq('location_id', '__session_config__')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
-      // In query filter if allowedSessionIds are provided
       query = query.in('session_id', allowedSessionIds.map(String));
     }
 
-    const { data, error } = await query;
+    const res = await query;
 
-    if (!error && Array.isArray(data)) {
-      remoteData = data;
+    if (!res.error && Array.isArray(res.data)) {
+      remoteData = res.data;
+    } else {
+      // Fallback: If session_id in query failed (e.g. column does not exist or schema issue), query all without session_id filter
+      const fallbackRes = await supabase
+        .from('quiz_submissions')
+        .select('*')
+        .neq('location_id', '__session_config__')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
+        remoteData = fallbackRes.data;
+      }
     }
   } catch (err) {
     console.warn('Supabase 조회 실패, 로컬 캐시를 조회합니다:', err);
+    try {
+      const fallback = await supabase
+        .from('quiz_submissions')
+        .select('*')
+        .neq('location_id', '__session_config__')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (fallback.data) remoteData = fallback.data;
+    } catch (e) {}
   }
 
   // Load from local storage (both user-namespaced and general)
