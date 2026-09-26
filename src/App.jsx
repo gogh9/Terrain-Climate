@@ -25,9 +25,9 @@ export default function App() {
       if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('session')) {
         return 'student';
       }
-      return localStorage.getItem('geo_user_role') || 'student';
+      return 'teacher';
     } catch {
-      return 'student';
+      return 'teacher';
     }
   });
   // Student user starts as null on fresh link entry so the login screen is always presented
@@ -399,44 +399,56 @@ export default function App() {
     );
   }
 
-  // If neither teacher nor student is logged in, show Landing Screen
   const isStudentSession = Boolean(sessionParam);
 
+  // 1. Root URL access without session parameter: Exclusively Teacher View
+  if (!isStudentSession) {
+    if (!user) {
+      return (
+        <LandingScreen
+          isStudentSession={false}
+          sessionInfo={null}
+          onStudentLogin={handleStudentLogin}
+          setUserRole={setUserRole}
+        />
+      );
+    }
+    if (activeView === 'workspace') {
+      return (
+        <TeacherWorkspace
+          user={user}
+          locations={LOCATION_DATA}
+          initialSessionId={currentSession?.id}
+          onEnterMap={(session) => {
+            if (!session) return;
+            setCurrentSession(session);
+            if (session.categoryFilter) {
+              setUrlCategory(session.categoryFilter);
+              setCategoryFilter(session.categoryFilter);
+            }
+            setActiveView('map');
+            try {
+              const newUrl = getStudentShareUrl(session);
+              window.history.replaceState(null, '', newUrl);
+            } catch (e) {
+              console.warn(e);
+            }
+          }}
+          onLogout={handleLogout}
+        />
+      );
+    }
+  }
+
+  // 2. Student Link Access (with ?session=...):
+  // If neither teacher nor student is logged in, show Student Login Screen
   if (!user && !studentUser) {
     return (
       <LandingScreen
-        isStudentSession={isStudentSession}
+        isStudentSession={true}
         sessionInfo={currentSession}
         onStudentLogin={handleStudentLogin}
         setUserRole={setUserRole}
-        initialRole={isStudentSession ? 'student' : userRole}
-      />
-    );
-  }
-
-  // If Teacher is logged in and activeView is 'workspace', show Teacher Workspace
-  if (user && activeView === 'workspace') {
-    return (
-      <TeacherWorkspace
-        user={user}
-        locations={LOCATION_DATA}
-        initialSessionId={currentSession?.id}
-        onEnterMap={(session) => {
-          if (!session) return;
-          setCurrentSession(session);
-          if (session.categoryFilter) {
-            setUrlCategory(session.categoryFilter);
-            setCategoryFilter(session.categoryFilter);
-          }
-          setActiveView('map');
-          try {
-            const newUrl = getStudentShareUrl(session);
-            window.history.replaceState(null, '', newUrl);
-          } catch (e) {
-            console.warn(e);
-          }
-        }}
-        onLogout={handleLogout}
       />
     );
   }
