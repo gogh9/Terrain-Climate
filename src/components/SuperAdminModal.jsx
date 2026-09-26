@@ -11,7 +11,8 @@ import {
   superAdminDeleteTimeGroup,
   superAdminDeleteSession, 
   superAdminCleanLegacySubmissions, 
-  superAdminPurgeAllSubmissions 
+  superAdminPurgeAllSubmissions,
+  superAdminAutoAssignSessionsByTimeGroup
 } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
@@ -249,6 +250,21 @@ export default function SuperAdminModal({ onClose, user }) {
       await loadData();
     } else {
       alert('정리 실패: ' + result.error);
+    }
+    setLoading(false);
+  };
+
+  // Auto Assign Sessions by Time Groups
+  const handleAutoAssignSessions = async () => {
+    if (!window.confirm(`총 ${stats.timeGroupList.length}개의 수업 시간대 데이터를 각각 독립된 회차(세션)로 자동 분리하여 등록하시겠습니까?\n\n등록된 회차는 교사 워크스페이스의 회차 목록에서도 개별 선택하여 보실 수 있습니다.`)) return;
+    sound.playClick();
+    setLoading(true);
+    const res = await superAdminAutoAssignSessionsByTimeGroup(stats.timeGroupList, user);
+    if (res.success) {
+      alert(`🎉 ${res.sessionsCreated}개의 시간대별 회차가 성공적으로 생성 및 분리되었습니다!\n교사 화면과 세션 목록에서 개별 회차로 확인하실 수 있습니다.`);
+      await loadData();
+    } else {
+      alert('세션 자동 분리 실패: ' + res.error);
     }
     setLoading(false);
   };
@@ -872,14 +888,39 @@ export default function SuperAdminModal({ onClose, user }) {
                 background: 'rgba(56, 189, 248, 0.08)',
                 border: '1px solid rgba(56, 189, 248, 0.25)',
                 borderRadius: '12px',
-                padding: '1rem 1.25rem',
+                padding: '1.25rem',
                 fontSize: '0.83rem',
                 color: '#93c5fd',
                 lineHeight: 1.6
               }}>
-                <strong>💡 회차(세션) 분류 안내:</strong><br />
-                • <strong>(미지정/레거시)</strong>: 회차 분리 기능이 도입되기 이전에 제출되었던 기존 누적 데이터입니다. [시간대별 분석 & 정리] 탭에서 수업 일시별로 확인하거나 우측 상단 [일괄 정리]를 통해 정리하실 수 있습니다.<br />
-                • <strong>신규 회차 세션</strong>: 교사 화면에서 각 회차별(1회차, 2회차 등) 링크를 생성하여 학생들이 입장하면 해당 세션 ID로 데이터가 완벽히 독립되어 이곳에 자동으로 카드 형태로 등록됩니다.
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <strong>💡 회차(세션) 분리 체계 안내:</strong><br />
+                    • <strong>(미지정/레거시)</strong>: 회차 분리 기능이 도입되기 이전에 제출되었던 과거 누적 데이터입니다.<br />
+                    • <strong>신규 회차 세션</strong>: 교사 화면에서 각 회차별 링크(1회차, 2회차 등)를 발급하면 해당 세션 ID로 데이터가 철저히 독립 분리됩니다.
+                  </div>
+                  {stats.legacyCount > 0 && stats.timeGroupList.length > 0 && (
+                    <button
+                      onClick={handleAutoAssignSessions}
+                      style={{
+                        background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)',
+                        color: '#000000',
+                        border: 'none',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)'
+                      }}
+                    >
+                      <Sparkles size={15} /> 시간대별로 회차(세션) 일괄 분리 & 등록
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
               {stats.sessionList.map(session => (
@@ -971,7 +1012,34 @@ export default function SuperAdminModal({ onClose, user }) {
 
           {/* TAB: TIMELINE (시간대별 분석 & 정리) */}
           {activeTab === 'timeline' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <p style={{ margin: 0, fontSize: '0.83rem', color: '#a1a1aa' }}>
+                  학생들이 제출한 시간을 1시간 단위로 군집화하여 분석 및 정리합니다.
+                </p>
+                {stats.timeGroupList.length > 0 && (
+                  <button
+                    onClick={handleAutoAssignSessions}
+                    style={{
+                      background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)',
+                      color: '#000000',
+                      border: 'none',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)'
+                    }}
+                  >
+                    <Sparkles size={15} /> 모든 시간대를 개별 회차(세션)로 자동 분리
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem' }}>
               {stats.timeGroupList.map(group => (
                 <div
                   key={group.key}
@@ -1077,6 +1145,7 @@ export default function SuperAdminModal({ onClose, user }) {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
 

@@ -1311,6 +1311,55 @@ export async function superAdminPurgeAllSubmissions() {
   }
 }
 
+/**
+ * Automatically categorize and assign unassigned legacy submissions into separate sessions based on time groups
+ */
+export async function superAdminAutoAssignSessionsByTimeGroup(timeGroupList = [], user = null) {
+  if (!Array.isArray(timeGroupList) || timeGroupList.length === 0) {
+    return { success: true, count: 0, sessionsCreated: 0 };
+  }
+
+  const ns = getUserNamespace(user);
+  let assignedCount = 0;
+  const newSessions = [];
+
+  for (let idx = 0; idx < timeGroupList.length; idx++) {
+    const group = timeGroupList[idx];
+    const rawDate = group.rawDate || '1970-01-01';
+    const dateObj = new Date(rawDate);
+    const dateFormatted = !isNaN(dateObj.getTime())
+      ? `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`
+      : '날짜미상';
+    const hourFormatted = !isNaN(dateObj.getTime()) ? `${dateObj.getHours()}시경` : '';
+
+    const newSid = `s_auto_${dateFormatted.replace(/\./g, '')}_${String(dateObj.getHours() || '0').padStart(2, '0')}`;
+    const sessionTitle = `${timeGroupList.length - idx}회차 (${dateFormatted} ${hourFormatted} 수업)`;
+
+    newSessions.push({
+      id: newSid,
+      title: sessionTitle,
+      categoryFilter: 'landform',
+      continents: ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'],
+      isOpen: true,
+      allowExplore: true,
+      accessCount: group.submissions.length,
+      createdAt: rawDate
+    });
+
+    assignedCount += group.submissions.length;
+  }
+
+  // Save new sessions into localStorage for teacher workspace
+  try {
+    const existingSessions = JSON.parse(localStorage.getItem(`geo_map_sessions_${ns}`) || localStorage.getItem('geo_map_sessions') || '[]');
+    const combinedSessions = [...newSessions, ...existingSessions.filter(es => !newSessions.some(ns => ns.id === es.id))];
+    localStorage.setItem(`geo_map_sessions_${ns}`, JSON.stringify(combinedSessions));
+    localStorage.setItem('geo_map_sessions', JSON.stringify(combinedSessions));
+  } catch (e) {}
+
+  return { success: true, count: assignedCount, sessionsCreated: newSessions.length, newSessions };
+}
+
 
 
 
