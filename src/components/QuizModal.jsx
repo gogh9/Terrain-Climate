@@ -8,6 +8,7 @@ import { saveQuizSubmission } from '../utils/supabaseService';
 export const LANDFORM_MAIN_CHOICES = [
   { label: '산', icon: '⛰️' },
   { label: '하천', icon: '🌊' },
+  { label: '평야·초원·사막', icon: '🏕️' },
   { label: '해안', icon: '🏖️' }
 ];
 
@@ -22,6 +23,11 @@ export const LANDFORM_SUB_CHOICES = {
     { label: '폭포', icon: '💦' },
     { label: '강', icon: '🌊' },
     { label: '호수', icon: '🏞️' }
+  ],
+  '평야·초원·사막': [
+    { label: '초원', icon: '🏕️' },
+    { label: '사막', icon: '🏜️' },
+    { label: '평야', icon: '🌾' }
   ],
   '해안': [
     { label: '피오르', icon: '🏔️🌊' },
@@ -105,6 +111,7 @@ export default function QuizModal({
     if (!prev) return '';
     if (prev.includes('산맥') || prev.includes('고원') || prev.includes('화산') || prev === '산' || prev.startsWith('산')) return '산';
     if (prev.includes('강') || prev.includes('호수') || prev.includes('폭포') || prev === '하천' || prev.startsWith('하천')) return '하천';
+    if (prev.includes('초원') || prev.includes('사막') || prev.includes('평야') || prev.includes('평야·초원·사막')) return '평야·초원·사막';
     if (prev.includes('피오르') || prev.includes('갯벌') || prev.includes('해안') || prev.includes('해변') || prev.includes('산호') || prev.includes('암석') || prev.includes('모래')) return '해안';
     return '';
   });
@@ -120,6 +127,9 @@ export default function QuizModal({
     if (prev.includes('폭포')) return '폭포';
     if (prev.includes('강')) return '강';
     if (prev.includes('호수')) return '호수';
+    if (prev.includes('초원')) return '초원';
+    if (prev.includes('사막')) return '사막';
+    if (prev.includes('평야')) return '평야';
     if (prev.includes('피오르')) return '피오르';
     if (prev.includes('갯벌')) return '갯벌';
     if (prev.includes('산호')) return '산호 해안';
@@ -267,10 +277,20 @@ export default function QuizModal({
 
       isNameCorrect = isMainCorrect && (CLIMATE_SUB_CHOICES[selectedClimateMain] ? isSubCorrect : true);
     } else {
-      const expMain = location.mainType || (['산맥', '고원', '화산', '산지'].includes(location.subType) ? '산' : (['하천', '강', '호수', '폭포'].includes(location.subType) ? '하천' : '해안'));
+      const expMain = location.mainType || (
+        ['산맥', '고원', '화산', '산지'].includes(location.subType) ? '산' :
+        (['하천', '강', '호수', '폭포'].includes(location.subType) ? '하천' :
+        (['초원', '사막', '평야'].includes(location.subType) ? '평야·초원·사막' : '해안'))
+      );
       const expSub = location.subType || '';
 
-      isMainCorrect = selectedMainType === expMain;
+      isMainCorrect = selectedMainType === expMain ||
+        (selectedMainType === '평야·초원·사막' && ['평야', '초원', '사막', '평야·초원·사막'].includes(expMain)) ||
+        (['산맥', '고원', '화산', '산지'].includes(expSub) && selectedMainType === '산') ||
+        (['하천', '강', '호수', '폭포'].includes(expSub) && selectedMainType === '하천') ||
+        (['초원', '사막', '평야'].includes(expSub) && selectedMainType === '평야·초원·사막') ||
+        (['피오르', '갯벌', '모래 해안', '암석 해안', '산호 해안'].includes(expSub) && selectedMainType === '해안');
+
       isSubCorrect = selectedSubType === expSub ||
         (expSub.includes('산맥') && selectedSubType === '산맥') ||
         (expSub.includes('고원') && selectedSubType === '고원') ||
@@ -278,6 +298,9 @@ export default function QuizModal({
         (expSub.includes('강') && selectedSubType === '강') ||
         (expSub.includes('호수') && selectedSubType === '호수') ||
         (expSub.includes('폭포') && selectedSubType === '폭포') ||
+        (expSub.includes('초원') && selectedSubType === '초원') ||
+        (expSub.includes('사막') && selectedSubType === '사막') ||
+        (expSub.includes('평야') && selectedSubType === '평야') ||
         (expSub.includes('피오르') && selectedSubType === '피오르') ||
         (expSub.includes('갯벌') && selectedSubType === '갯벌') ||
         (expSub.includes('산호') && selectedSubType.includes('산호')) ||
@@ -841,7 +864,7 @@ export default function QuizModal({
                           </span>
                         )}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px' }}>
                         {LANDFORM_MAIN_CHOICES.map((opt) => {
                           const isSelected = selectedMainType === opt.label;
                           return (
@@ -858,19 +881,19 @@ export default function QuizModal({
                                 }
                               }}
                               style={{
-                                padding: '0.8rem 0.5rem',
+                                padding: '0.8rem 0.4rem',
                                 background: isSelected ? '#1ed760' : '#1f1f1f',
                                 color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
                                 border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
                                 borderRadius: '12px',
-                                fontSize: '1rem',
+                                fontSize: '0.92rem',
                                 fontWeight: isSelected ? 900 : 700,
                                 cursor: isInputAllowed ? 'pointer' : 'not-allowed',
                                 opacity: isInputAllowed ? 1 : 0.6,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '6px',
+                                gap: '5px',
                                 wordBreak: 'keep-all',
                                 textAlign: 'center',
                                 boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',

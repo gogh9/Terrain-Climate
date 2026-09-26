@@ -7,7 +7,7 @@ import SuperAdminModal from './SuperAdminModal';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
 
-// 지형 지점 표준 순서 (총 14개 지점)
+// 지형 지점 표준 순서 (총 16개 지점)
 export const LANDFORM_ORDER = [
   '스위스(알프스 ○○)',
   '네팔 (히말라야 ○○)',
@@ -18,6 +18,8 @@ export const LANDFORM_ORDER = [
   '캐나다 (오타와○)',
   '짐바브웨(빅토리아 ○○)',
   '페루(티티카카○)',
+  '몽골 (○○)',
+  '알제리 (○○)',
   '노르웨이(○○○ ○○)',
   '네덜란드(바덴해 ○○ ○○)',
   '오스트레일리아 (○○ ○○)',
@@ -64,6 +66,10 @@ export const normalizeTitle = (title) => {
     .replace(/페루\s*\(\s*티티카카호와\s*\)/g, '페루(티티카카○)')
     .replace(/페루\s*\(티티카카○\)/g, '페루(티티카카○)')
     .replace(/티티카카호와/g, '티티카카호')
+    .replace(/몽골\s*\(\s*초원\s*\)/g, '몽골 (○○)')
+    .replace(/몽골\s*\(○○\)/g, '몽골 (○○)')
+    .replace(/알제리\s*\(\s*사막\s*\)/g, '알제리 (○○)')
+    .replace(/알제리\s*\(○○\)/g, '알제리 (○○)')
     .replace(/노르웨이\s*\(○○○\s*○○\)/g, '노르웨이(○○○ ○○)')
     .replace(/네덜란드\s*\(바덴해\s*○○\s*○○\)/g, '네덜란드(바덴해 ○○ ○○)')
     .replace(/인도네시아\s*\(\s*발리섬\s*모래\s*해안\s*\)/g, '인도네시아 (발리섬 모래 ○○)')
@@ -158,7 +164,7 @@ export const compareStudents = (rawA, rawB) => {
   return (a.name || '').localeCompare(b.name || '', 'ko');
 };
 
-// 세션 카테고리에 따른 지점 열 목록 계산 (지형: 12개, 기후: 12개, 전체: 24개)
+// 세션 카테고리에 따른 지점 열 목록 계산 (지형: 16개, 기후: 12개, 전체: 28개)
 export const getColumnsForSession = (session) => {
   const filter = session?.categoryFilter;
   if (filter === 'climate') return CLIMATE_ORDER;
