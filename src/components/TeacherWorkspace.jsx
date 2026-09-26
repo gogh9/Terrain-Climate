@@ -1843,7 +1843,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                   </span>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#a1a1aa', marginTop: '3px' }}>
-                  과거에 학생들이 제출했던 이전 수업 기록들이 시간대별로 안전하게 보관되어 있습니다. 클릭하여 제출 현황을 열람하거나 엑셀로 다운로드할 수 있습니다.
+                  서버 이전 과정에서 이전 자료를 링크로 저장해두었습니다.
                 </div>
               </div>
             </div>
