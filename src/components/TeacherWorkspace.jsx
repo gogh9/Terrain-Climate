@@ -847,22 +847,22 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     alert('지도가 삭제되었습니다.');
   };
 
-  // Merge user custom sessions with discovered protected time group sessions
-  const mergedSessions = useMemo(() => {
-    // 1. All active custom teacher sessions (from state / localStorage)
-    // Newly created sessions or custom sessions are guaranteed NOT protected
-    const customSessions = sessions
+  // 1. All active custom teacher sessions (from state / localStorage)
+  const customTeacherSessions = useMemo(() => {
+    return sessions
       .filter(s => !s.timeGroupKey)
       .map(s => ({ ...s, isProtected: false }));
+  }, [sessions]);
 
-    const customSessionIds = new Set(customSessions.map(s => String(s.id)));
+  // 2. All historical preserved time group sessions
+  const archivedTimeSessions = useMemo(() => {
+    const customSessionIds = new Set(customTeacherSessions.map(s => String(s.id)));
 
-    // 2. Cluster submissions by time group ONLY for historical submissions NOT belonging to active teacher sessions
+    // Cluster submissions by time group ONLY for historical submissions NOT belonging to active teacher sessions
     const timeGroupMap = {};
     submissions.forEach(sub => {
       if (!sub) return;
       const sid = String(sub.session_id || '');
-      // If submission belongs to an active teacher session, do not wrap it into historical protected timeSessions
       if (sid && customSessionIds.has(sid)) {
         return;
       }
@@ -880,18 +880,15 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       }
     });
 
-    // Sort time groups chronologically
     const sortedGroups = Object.values(timeGroupMap)
       .filter(g => g.submissions.length > 0)
       .sort((a, b) => new Date(a.rawDate) - new Date(b.rawDate));
 
-    // Create protected session objects for each historical time group (과거 보존 세션)
-    const timeSessions = sortedGroups.map((g, idx) => {
+    return sortedGroups.map((g, idx) => {
       const d = new Date(g.rawDate);
       const dateStr = !isNaN(d.getTime()) ? `${d.getMonth() + 1}. ${d.getDate()}.` : '';
       const hourStr = !isNaN(d.getTime()) ? `${d.getHours()}시` : '';
 
-      // Count climate vs landform submissions accurately based on majority
       const climateCount = g.submissions.filter(s => (s.location_id || '').includes('climate') || (s.location_title || '').includes('기후')).length;
       const landformCount = g.submissions.length - climateCount;
 
@@ -902,7 +899,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         category = 'climate';
       }
 
-      // Check if teacher has an existing custom session override for this time session
       const existingOverride = sessions.find(s => String(s.id) === `time_session_${idx + 1}`);
 
       return {
@@ -918,19 +914,17 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         timeGroupKey: g.key
       };
     });
+  }, [submissions, customTeacherSessions, sessions]);
 
-    if (customSessions.length === 0 && timeSessions.length > 0) {
-      return timeSessions;
-    }
+  // Combined merged sessions: USER-CREATED SESSIONS FIRST, followed by archived preserved sessions
+  const mergedSessions = useMemo(() => {
+    return [...customTeacherSessions, ...archivedTimeSessions];
+  }, [customTeacherSessions, archivedTimeSessions]);
 
-    // Historical preserved sessions first, followed by teacher's custom active sessions
-    return [...timeSessions, ...customSessions];
-  }, [submissions, sessions]);
-
-  // Active Session helper
+  // Active Session helper: defaults to logged-in user's created custom session first!
   const activeSession = useMemo(() => {
-    return mergedSessions.find(s => String(s.id) === String(activeSessionId)) || mergedSessions[0] || sessions[0];
-  }, [mergedSessions, sessions, activeSessionId]);
+    return mergedSessions.find(s => String(s.id) === String(activeSessionId)) || customTeacherSessions[0] || mergedSessions[0] || sessions[0];
+  }, [mergedSessions, customTeacherSessions, sessions, activeSessionId]);
 
   // Submissions filtered strictly for the Active Session & Category
   const sessionSubmissions = useMemo(() => {
@@ -1328,6 +1322,353 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     alert(`[${groupKey}] 시간대 데이터가 삭제되었습니다.`);
   };
 
+  // Render Individual Session Card (Supports both custom active maps and archived preserved maps)
+  const renderSessionCard = (session, isArchived = false) => {
+    const isSelected = String(activeSessionId) === String(session.id);
+    const isClimate = session.categoryFilter === 'climate';
+    const isAll = session.categoryFilter === 'all';
+    const sessionSubmissionsForCard = getSubmissionsForSession(session, submissions);
+    const cardStudentCount = new Set(sessionSubmissionsForCard.map(s => s.student_name || '익명')).size;
+    const sessionSubCount = sessionSubmissionsForCard.length;
+
+    return (
+      <div
+        key={session.id}
+        onClick={() => setActiveSessionId(String(session.id))}
+        style={{
+          background: isArchived ? '#161616' : '#181818',
+          borderRadius: '12px',
+          border: `2px solid ${isSelected ? '#1ed760' : (isArchived ? '#262626' : '#282828')}`,
+          padding: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.1rem',
+          position: 'relative',
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+          boxShadow: isSelected ? '0 0 20px rgba(29, 215, 96, 0.25)' : 'rgba(0, 0, 0, 0.3) 0px 8px 8px',
+          cursor: 'pointer'
+        }}
+      >
+        {/* Card Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.3 }}>
+                {session.title}
+              </h3>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                padding: '3px 10px',
+                borderRadius: '9999px',
+                background: isClimate ? 'rgba(245, 158, 11, 0.18)' : (isAll ? 'rgba(34, 197, 94, 0.18)' : 'rgba(2, 132, 199, 0.18)'),
+                color: isClimate ? '#fbbf24' : (isAll ? '#4ade80' : '#38bdf8'),
+                border: `1px solid ${isClimate ? 'rgba(245, 158, 11, 0.35)' : (isAll ? 'rgba(34, 197, 94, 0.35)' : 'rgba(2, 132, 199, 0.35)')}`,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                lineHeight: 1
+              }}>
+                {isClimate ? '☀️ 기후 (12개)' : (isAll ? '🌐 전체 (24개)' : '🏔️ 지형 (12개)')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa', flexWrap: 'wrap' }}>
+              <span>제출 학생: <strong style={{ color: cardStudentCount > 0 ? '#1ed760' : '#71717a' }}>{cardStudentCount}명</strong></span>
+              <span>•</span>
+              <span>답안 건수: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong></span>
+              {isSelected && (
+                <span style={{ color: '#1ed760', fontWeight: 800, marginLeft: '4px', whiteSpace: 'nowrap' }}>
+                  ● 선택됨 (아래 확인)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Card Top Right: Reset and Delete Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+            {session.isProtected && !isSuperAdmin ? (
+              <span style={{
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                lineHeight: 1
+              }}>
+                <Shield size={12} /> 보존 세션 (삭제 불가)
+              </span>
+            ) : (
+              <>
+                {session.isProtected && isSuperAdmin && (
+                  <span style={{
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    color: '#38bdf8',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    padding: '5px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    lineHeight: 1
+                  }} title="관리자(gogh9@susaek.sen.es.kr) 권한으로 삭제 및 초기화 가능">
+                    <Shield size={11} /> 관리자 보존
+                  </span>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleResetSession(session); }}
+                  style={{
+                    background: '#222222',
+                    color: '#ffa42b',
+                    border: '1px solid #444444',
+                    padding: '5px 12px',
+                    borderRadius: '9999px',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    lineHeight: 1,
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#2e2e2e'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
+                  title="이 회차 학생 제출 기록 초기화"
+                >
+                  <RotateCcw size={12} /> 초기화
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteSession(session); }}
+                  style={{
+                    background: '#222222',
+                    color: '#f3727f',
+                    border: '1px solid #444444',
+                    padding: '5px 12px',
+                    borderRadius: '9999px',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    lineHeight: 1,
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#2e2e2e'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
+                  title="이 회차 지도 삭제"
+                >
+                  <Trash2 size={12} /> 삭제
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Category Filter Selection */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#b3b3b3' }}>
+          <span style={{ fontWeight: 600 }}>학습 주제:</span>
+          <select
+            value={session.categoryFilter || 'landform'}
+            onChange={(e) => handleCategoryChange(session.id, e.target.value)}
+            style={{
+              background: '#1f1f1f',
+              color: '#ffffff',
+              border: '1px solid #404040',
+              borderRadius: '9999px',
+              padding: '5px 12px',
+              fontSize: '0.82rem',
+              outline: 'none',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <option value="landform">🏔️ 지형 (12개 지점)</option>
+            <option value="climate">☀️ 기후 (12개 지점)</option>
+            <option value="all">🌐 전체 (24개 지점)</option>
+          </select>
+        </div>
+
+        {/* Distinct Share Link Box */}
+        <div
+          style={{
+            background: '#121212',
+            border: '1px solid #282828',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
+            <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              🔗 배부 링크:
+            </span>
+            <span style={{ fontSize: '0.76rem', color: '#888888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {getStudentShareUrl(session)}
+            </span>
+          </div>
+          <span style={{ fontSize: '0.72rem', background: '#222222', color: '#a1a1aa', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+            ID: {session.id}
+          </span>
+        </div>
+
+        {/* Actions Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', width: '100%' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveSessionId(String(session.id));
+              onEnterMap?.(session);
+            }}
+            style={{
+              background: '#1f1f1f',
+              color: '#ffffff',
+              border: '1px solid #7c7c7c',
+              padding: '7px 4px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
+            title={`이 회차(${session.title}) 지도로 바로 이동`}
+          >
+            🗺️ 지도 보기
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleExportExcel(session); }}
+            style={{
+              background: '#1f1f1f',
+              color: '#1ed760',
+              border: '1px solid #1ed760',
+              padding: '7px 4px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#1ed760'; e.currentTarget.style.color = '#000000'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#1f1f1f'; e.currentTarget.style.color = '#1ed760'; }}
+          >
+            <Download size={14} /> 엑셀 저장
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleToggleOpen(session.id); }}
+            style={{
+              background: session.isOpen ? '#1ed760' : '#282828',
+              color: session.isOpen ? '#000000' : '#b3b3b3',
+              border: 'none',
+              padding: '7px 4px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              transition: 'all 0.15s ease'
+            }}
+            title="학생들의 답안 제출 가능 여부를 설정합니다"
+          >
+            {session.isOpen ? '✓ 입력 가능' : '🔒 마감'}
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleToggleExplore(session.id); }}
+            style={{
+              background: session.allowExplore !== false ? '#1ed760' : '#282828',
+              color: session.allowExplore !== false ? '#000000' : '#b3b3b3',
+              border: session.allowExplore !== false ? 'none' : '1px solid #404040',
+              padding: '7px 4px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              transition: 'all 0.15s ease'
+            }}
+            title="학생들의 퀴즈 창 내 '교과서 핵심 탐색' 이용 가능 여부를 설정합니다"
+          >
+            {session.allowExplore !== false ? '📖 탐색 가능' : '🔒 탐색 잠금'}
+          </button>
+        </div>
+
+        {/* Copy Link Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleCopyLink(session); }}
+          style={{
+            background: '#1ed760',
+            color: '#000000',
+            border: 'none',
+            padding: '0.9rem',
+            borderRadius: '9999px',
+            fontSize: '0.95rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '1.4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 16px rgba(29, 215, 96, 0.35)',
+            transition: 'transform 0.15s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          {copiedId === session.id ? <Check size={20} /> : <Copy size={20} />}
+          <span>{copiedId === session.id ? '링크 복사 완료!' : '📋 학생 배부용 링크 복사'}</span>
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -1441,362 +1782,84 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         </div>
       </header>
 
-      {/* Map Assignment Cards Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}
-      >
-        {mergedSessions.map(session => {
-          const isSelected = String(activeSessionId) === String(session.id);
-          const isClimate = session.categoryFilter === 'climate';
-          const isLandform = session.categoryFilter === 'landform';
-          const sessionSubmissionsForCard = getSubmissionsForSession(session, submissions);
-          const cardStudentCount = new Set(sessionSubmissionsForCard.map(s => s.student_name || '익명')).size;
-          const sessionSubCount = sessionSubmissionsForCard.length;
+      {/* SECTION 1: Logged-in User's Active Custom Maps (Presented First) */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+              🗺️ 내가 만든 수업 지도
+            </h2>
+            <span style={{ background: '#1ed760', color: '#000000', fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px' }}>
+              {customTeacherSessions.length}개
+            </span>
+          </div>
+          <span style={{ fontSize: '0.8rem', color: '#a1a1aa' }}>
+            💡 학생들에게 배부하여 실시간 수업을 진행하고 제출을 받는 활성 지도입니다.
+          </span>
+        </div>
 
-          return (
-            <div
-              key={session.id}
-              onClick={() => setActiveSessionId(String(session.id))}
-              style={{
-                background: '#181818',
-                borderRadius: '12px',
-                border: `2px solid ${isSelected ? '#1ed760' : '#282828'}`,
-                padding: '1.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.1rem',
-                position: 'relative',
-                transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
-                boxShadow: isSelected ? '0 0 20px rgba(29, 215, 96, 0.25)' : 'rgba(0, 0, 0, 0.3) 0px 8px 8px',
-                cursor: 'pointer'
-              }}
-            >
-              {/* Card Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.3 }}>
-                      {session.title}
-                    </h3>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      padding: '3px 10px',
-                      borderRadius: '9999px',
-                      background: isClimate ? 'rgba(245, 158, 11, 0.18)' : 'rgba(2, 132, 199, 0.18)',
-                      color: isClimate ? '#fbbf24' : '#38bdf8',
-                      border: `1px solid ${isClimate ? 'rgba(245, 158, 11, 0.35)' : 'rgba(2, 132, 199, 0.35)'}`,
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      lineHeight: 1
-                    }}>
-                      {isClimate ? '☀️ 기후 (12개)' : '🏔️ 지형 (12개)'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa', flexWrap: 'wrap' }}>
-                    <span>제출 학생: <strong style={{ color: cardStudentCount > 0 ? '#1ed760' : '#71717a' }}>{cardStudentCount}명</strong></span>
-                    <span>•</span>
-                    <span>답안 건수: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong></span>
-                    {isSelected && (
-                      <span style={{ color: '#1ed760', fontWeight: 800, marginLeft: '4px', whiteSpace: 'nowrap' }}>
-                        ● 선택됨 (아래 확인)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card Top Right: Reset and Delete Buttons (Protected for Time Group Sessions, editable/deletable by super admin gogh9@susaek.sen.es.kr) */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                  {session.isProtected && !isSuperAdmin ? (
-                    <span style={{
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      color: '#38bdf8',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                      padding: '5px 12px',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      lineHeight: 1
-                    }}>
-                      <Shield size={12} /> 보존 세션 (삭제 불가)
-                    </span>
-                  ) : (
-                    <>
-                      {session.isProtected && isSuperAdmin && (
-                        <span style={{
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          color: '#38bdf8',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          padding: '5px 10px',
-                          borderRadius: '9999px',
-                          fontSize: '0.72rem',
-                          fontWeight: 800,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          lineHeight: 1
-                        }} title="관리자(gogh9@susaek.sen.es.kr) 권한으로 삭제 및 초기화 가능">
-                          <Shield size={11} /> 관리자 보존
-                        </span>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleResetSession(session); }}
-                        style={{
-                          background: '#222222',
-                          color: '#ffa42b',
-                          border: '1px solid #444444',
-                          padding: '5px 12px',
-                          borderRadius: '9999px',
-                          fontSize: '0.76rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          lineHeight: 1,
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#2e2e2e'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
-                        title="이 회차 학생 제출 기록 초기화"
-                      >
-                        <RotateCcw size={12} /> 초기화
-                      </button>
-
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(session); }}
-                        style={{
-                          background: '#222222',
-                          color: '#f3727f',
-                          border: '1px solid #444444',
-                          padding: '5px 12px',
-                          borderRadius: '9999px',
-                          fontSize: '0.76rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                          lineHeight: 1,
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#2e2e2e'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
-                        title="이 회차 지도 삭제"
-                      >
-                        <Trash2 size={12} /> 삭제
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Category Filter Selection */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#b3b3b3' }}>
-                <span style={{ fontWeight: 600 }}>학습 주제:</span>
-                <select
-                  value={session.categoryFilter || 'landform'}
-                  onChange={(e) => handleCategoryChange(session.id, e.target.value)}
-                  style={{
-                    background: '#1f1f1f',
-                    color: '#ffffff',
-                    border: '1px solid #404040',
-                    borderRadius: '9999px',
-                    padding: '5px 12px',
-                    fontSize: '0.82rem',
-                    outline: 'none',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="landform">🏔️ 지형 (12개 지점)</option>
-                  <option value="climate">☀️ 기후 (12개 지점)</option>
-                  <option value="all">🌐 전체 (24개 지점)</option>
-                </select>
-              </div>
-
-              {/* Distinct Share Link Box */}
-              <div
-                style={{
-                  background: '#121212',
-                  border: '1px solid #282828',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
-                  <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    🔗 배부 링크:
-                  </span>
-                  <span style={{ fontSize: '0.76rem', color: '#888888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {getStudentShareUrl(session)}
-                  </span>
-                </div>
-                <span style={{ fontSize: '0.72rem', background: '#222222', color: '#a1a1aa', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                  ID: {session.id}
-                </span>
-              </div>
-
-              {/* Actions: Direct Map View & Excel Export & Open/Close Toggle & Explore Toggle (Equal 4-Column Grid) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', width: '100%' }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveSessionId(String(session.id));
-                    onEnterMap?.(session);
-                  }}
-                  style={{
-                    background: '#1f1f1f',
-                    color: '#ffffff',
-                    border: '1px solid #7c7c7c',
-                    padding: '7px 4px',
-                    borderRadius: '9999px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.color = '#1ed760'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#7c7c7c'; e.currentTarget.style.color = '#ffffff'; }}
-                  title={`이 회차(${session.title}) 지도로 바로 이동`}
-                >
-                  🗺️ 지도 보기
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleExportExcel(session); }}
-                  style={{
-                    background: '#1f1f1f',
-                    color: '#1ed760',
-                    border: '1px solid #1ed760',
-                    padding: '7px 4px',
-                    borderRadius: '9999px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#1ed760'; e.currentTarget.style.color = '#000000'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#1f1f1f'; e.currentTarget.style.color = '#1ed760'; }}
-                >
-                  <Download size={14} /> 엑셀 저장
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleToggleOpen(session.id); }}
-                  style={{
-                    background: session.isOpen ? '#1ed760' : '#282828',
-                    color: session.isOpen ? '#000000' : '#b3b3b3',
-                    border: 'none',
-                    padding: '7px 4px',
-                    borderRadius: '9999px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="학생들의 답안 제출 가능 여부를 설정합니다"
-                >
-                  {session.isOpen ? '✓ 입력 가능' : '🔒 마감'}
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleToggleExplore(session.id); }}
-                  style={{
-                    background: session.allowExplore !== false ? '#1ed760' : '#282828',
-                    color: session.allowExplore !== false ? '#000000' : '#b3b3b3',
-                    border: session.allowExplore !== false ? 'none' : '1px solid #404040',
-                    padding: '7px 4px',
-                    borderRadius: '9999px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="학생들의 퀴즈 창 내 '교과서 핵심 탐색' 이용 가능 여부를 설정합니다"
-                >
-                  {session.allowExplore !== false ? '📖 탐색 가능' : '🔒 탐색 잠금'}
-                </button>
-              </div>
-
-              {/* Spotify Green Copy Link Button */}
-              <button
-                onClick={(e) => { e.stopPropagation(); handleCopyLink(session); }}
-                style={{
-                  background: '#1ed760',
-                  color: '#000000',
-                  border: 'none',
-                  padding: '0.9rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1.4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 16px rgba(29, 215, 96, 0.35)',
-                  transition: 'transform 0.15s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                {copiedId === session.id ? <Check size={20} /> : <Copy size={20} />}
-                <span>{copiedId === session.id ? '링크 복사 완료!' : '📋 학생 배부용 링크 복사'}</span>
-              </button>
-
-            </div>
-          );
-        })}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
+            gap: '1.5rem'
+          }}
+        >
+          {customTeacherSessions.map(session => renderSessionCard(session, false))}
+        </div>
       </div>
+
+      {/* SECTION 2: Archived Historical Sessions (Presented Separately Below) */}
+      {archivedTimeSessions.length > 0 && (
+        <div style={{
+          marginTop: '1.5rem',
+          marginBottom: '2.5rem',
+          background: '#141414',
+          border: '1px solid #282828',
+          borderRadius: '16px',
+          padding: '1.25rem 1.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Clock size={18} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                    📦 과거 수업 보관 지도
+                  </h2>
+                  <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px' }}>
+                    보관 {archivedTimeSessions.length}개
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#a1a1aa', marginTop: '3px' }}>
+                  과거에 학생들이 제출했던 이전 수업 기록들이 시간대별로 안전하게 보관되어 있습니다. 클릭하여 제출 현황을 열람하거나 엑셀로 다운로드할 수 있습니다.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
+              gap: '1.25rem'
+            }}
+          >
+            {archivedTimeSessions.map(session => renderSessionCard(session, true))}
+          </div>
+        </div>
+      )}
 
       {/* Student Submissions Section */}
       <div style={{ marginTop: '1.5rem' }}>
