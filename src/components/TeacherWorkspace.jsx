@@ -1397,30 +1397,35 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               }}
             >
               {/* Card Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.3 }}>
                       {session.title}
                     </h3>
                     <span style={{
                       fontSize: '0.75rem',
                       fontWeight: 800,
-                      padding: '2px 8px',
+                      padding: '3px 10px',
                       borderRadius: '9999px',
-                      background: isClimate ? 'rgba(245, 158, 11, 0.2)' : 'rgba(2, 132, 199, 0.2)',
+                      background: isClimate ? 'rgba(245, 158, 11, 0.18)' : 'rgba(2, 132, 199, 0.18)',
                       color: isClimate ? '#fbbf24' : '#38bdf8',
-                      border: `1px solid ${isClimate ? 'rgba(245, 158, 11, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
+                      border: `1px solid ${isClimate ? 'rgba(245, 158, 11, 0.35)' : 'rgba(2, 132, 199, 0.35)'}`,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      lineHeight: 1
                     }}>
                       {isClimate ? '☀️ 기후 (12개)' : '🏔️ 지형 (12개)'}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa', flexWrap: 'wrap' }}>
                     <span>제출 학생: <strong style={{ color: cardStudentCount > 0 ? '#1ed760' : '#71717a' }}>{cardStudentCount}명</strong></span>
                     <span>•</span>
                     <span>답안 건수: <strong style={{ color: sessionSubCount > 0 ? '#1ed760' : '#71717a' }}>{sessionSubCount}건</strong></span>
                     {isSelected && (
-                      <span style={{ color: '#1ed760', fontWeight: 800, marginLeft: '4px' }}>
+                      <span style={{ color: '#1ed760', fontWeight: 800, marginLeft: '4px', whiteSpace: 'nowrap' }}>
                         ● 선택됨 (아래 확인)
                       </span>
                     )}
@@ -1428,42 +1433,48 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 </div>
 
                 {/* Card Top Right: Reset and Delete Buttons (Protected for Time Group Sessions) */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                   {session.isProtected ? (
                     <span style={{
                       background: 'rgba(56, 189, 248, 0.12)',
                       color: '#38bdf8',
                       border: '1px solid rgba(56, 189, 248, 0.3)',
-                      padding: '4px 10px',
+                      padding: '5px 12px',
                       borderRadius: '9999px',
-                      fontSize: '0.72rem',
+                      fontSize: '0.75rem',
                       fontWeight: 800,
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '5px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      lineHeight: 1
                     }}>
-                      <Shield size={11} /> 보존 세션 (삭제 불가)
+                      <Shield size={12} /> 보존 세션 (삭제 불가)
                     </span>
                   ) : (
                     <>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
                         style={{
-                          background: '#1f1f1f',
+                          background: '#222222',
                           color: '#ffa42b',
-                          border: '1px solid #404040',
-                          padding: '4px 10px',
+                          border: '1px solid #444444',
+                          padding: '5px 12px',
                           borderRadius: '9999px',
-                          fontSize: '0.74rem',
+                          fontSize: '0.76rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '3px',
+                          gap: '5px',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          lineHeight: 1,
                           transition: 'all 0.15s ease'
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#282828'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#2e2e2e'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
                         title="이 회차 학생 제출 기록 초기화"
                       >
                         <RotateCcw size={12} /> 초기화
@@ -1472,21 +1483,24 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
                         style={{
-                          background: '#1f1f1f',
+                          background: '#222222',
                           color: '#f3727f',
-                          border: '1px solid #404040',
-                          padding: '4px 10px',
+                          border: '1px solid #444444',
+                          padding: '5px 12px',
                           borderRadius: '9999px',
-                          fontSize: '0.74rem',
+                          fontSize: '0.76rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '3px',
+                          gap: '5px',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          lineHeight: 1,
                           transition: 'all 0.15s ease'
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#282828'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#2e2e2e'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#444444'; e.currentTarget.style.background = '#222222'; }}
                         title="이 회차 지도 삭제"
                       >
                         <Trash2 size={12} /> 삭제
