@@ -25,10 +25,11 @@ export const LANDFORM_ORDER = [
   '인도네시아 (발리섬 모래 해안)'
 ];
 
-// 기후 지점 표준 순서 (총 12개 지점)
+// 기후 지점 표준 순서 (총 13개 지점)
 export const CLIMATE_ORDER = [
   '대한민국 (벼농사)',
   '영국·네덜란드 (밀농사·화훼 농업)',
+  '에스파냐 (올리브·지중해)',
   '캐나다 (타이가 숲·임업)',
   '몽골 (게르와 초원)',
   '모로코·알제리 (사하라 사막·흙집)',
@@ -59,6 +60,8 @@ export const normalizeTitle = (title) => {
     .replace(/노르웨이\s*\(○○○\s*○○\)/g, '노르웨이(○○○ ○○)')
     .replace(/네덜란드\s*\(바덴해\s*○○\s*○○\)/g, '네덜란드(바덴해 ○○ ○○)')
     .replace(/하와이\s*\(마우나로아산\)/g, '하와이(마우나로아산)')
+    .replace(/스페인\s*\(올리브[·\s]*지중해\)/g, '에스파냐 (올리브·지중해)')
+    .replace(/에스파냐\s*\(올리브[·\s]*지중해\)/g, '에스파냐 (올리브·지중해)')
     .replace(/영국\s*,\s*네덜란드/g, '영국·네덜란드')
     .replace(/네덜란드\s*,\s*영국/g, '영국·네덜란드')
     .replace(/네덜란드·영국/g, '영국·네덜란드')
@@ -2207,9 +2210,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     gap: '3px',
                     transition: 'all 0.15s ease'
                   }}
-                  title="기후 12개 지점 표 보기"
+                  title="기후 13개 지점 표 보기"
                 >
-                  ☀️ 기후 (12)
+                  ☀️ 기후 (13)
                 </button>
                 <button
                   onClick={() => handleCategoryChange(activeSession.id, 'all')}
@@ -2227,9 +2230,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     gap: '3px',
                     transition: 'all 0.15s ease'
                   }}
-                  title="지형과 기후 26개 지점 전체 표 보기"
+                  title="지형과 기후 27개 지점 전체 표 보기"
                 >
-                  🌐 전체 (26)
+                  🌐 전체 (27)
                 </button>
               </div>
 

@@ -37,13 +37,46 @@ export const LANDFORM_CHOICES = [
   ...LANDFORM_MAIN_CHOICES
 ];
 
-export const CLIMATE_CHOICES = [
+// 기후 대분류 선택지 (1단계)
+export const CLIMATE_MAIN_CHOICES = [
   { label: '열대 기후', icon: '🌴' },
   { label: '건조 기후', icon: '🏜️' },
   { label: '온대 기후', icon: '🌾' },
   { label: '냉대 기후', icon: '🌲' },
   { label: '한대 기후', icon: '❄️' },
   { label: '고산 기후', icon: '🏔️' }
+];
+
+// 기후 세부 하부 요소 선택지 (2단계)
+export const CLIMATE_SUB_CHOICES = {
+  '열대 기후': [
+    { label: '열대 우림 기후', icon: '🌴🌧️' },
+    { label: '열대 사바나 기후', icon: '🦒' }
+  ],
+  '건조 기후': [
+    { label: '사막 기후', icon: '🏜️' },
+    { label: '초원(스텝) 기후', icon: '🏕️' }
+  ],
+  '온대 기후': [
+    { label: '서안 해양성 기후', icon: '🌊🌾' },
+    { label: '지중해성 기후', icon: '🫒☀️' },
+    { label: '온대 계절풍 기후', icon: '🌾🍚' }
+  ],
+  '냉대 기후': [
+    { label: '타이가(침엽수림) 기후', icon: '🌲' }
+  ],
+  '한대 기후': [
+    { label: '툰드라(극지방) 기후', icon: '❄️' },
+    { label: '빙설 기후', icon: '🧊' }
+  ],
+  '고산 기후': [
+    { label: '고산(상춘) 기후', icon: '🏔️' }
+  ]
+};
+
+// 하위 호환용 단일 배열
+export const CLIMATE_CHOICES = [
+  ...CLIMATE_MAIN_CHOICES
 ];
 
 export default function QuizModal({
@@ -105,13 +138,38 @@ export default function QuizModal({
     return '';
   });
 
-  // 기후 선택 상태
-  const [selectedClimate, setSelectedClimate] = useState(() => {
+  // 기후 대분류 선택 상태 (1단계)
+  const [selectedClimateMain, setSelectedClimateMain] = useState(() => {
     if (location.category !== 'climate') return '';
     const prev = previousAnswer?.name || '';
     if (!prev) return '';
-    const found = CLIMATE_CHOICES.find(c => prev.includes(c.label.slice(0, 2)));
-    return found ? found.label : prev;
+    if (prev.includes('열대')) return '열대 기후';
+    if (prev.includes('건조') || prev.includes('사막') || prev.includes('초원') || prev.includes('스텝')) return '건조 기후';
+    if (prev.includes('온대') || prev.includes('서안') || prev.includes('지중해') || prev.includes('계절풍')) return '온대 기후';
+    if (prev.includes('냉대') || prev.includes('타이가')) return '냉대 기후';
+    if (prev.includes('한대') || prev.includes('툰드라') || prev.includes('빙설') || prev.includes('이누이트') || prev.includes('이글루')) return '한대 기후';
+    if (prev.includes('고산') || prev.includes('상춘') || prev.includes('안데스')) return '고산 기후';
+    const found = CLIMATE_MAIN_CHOICES.find(c => prev.includes(c.label.slice(0, 2)));
+    return found ? found.label : '';
+  });
+
+  // 기후 세부 하부 요소 선택 상태 (2단계)
+  const [selectedClimateSub, setSelectedClimateSub] = useState(() => {
+    if (location.category !== 'climate') return '';
+    const prev = previousAnswer?.name || '';
+    if (!prev) return '';
+    if (prev.includes('열대 우림') || prev.includes('우림')) return '열대 우림 기후';
+    if (prev.includes('사바나')) return '열대 사바나 기후';
+    if (prev.includes('사막')) return '사막 기후';
+    if (prev.includes('초원') || prev.includes('스텝')) return '초원(스텝) 기후';
+    if (prev.includes('서안 해양성') || prev.includes('서안해양성') || prev.includes('서안')) return '서안 해양성 기후';
+    if (prev.includes('지중해') || prev.includes('지중해성')) return '지중해성 기후';
+    if (prev.includes('온대 계절풍') || prev.includes('계절풍')) return '온대 계절풍 기후';
+    if (prev.includes('타이가') || prev.includes('침엽수')) return '타이가(침엽수림) 기후';
+    if (prev.includes('툰드라')) return '툰드라(극지방) 기후';
+    if (prev.includes('빙설')) return '빙설 기후';
+    if (prev.includes('고산') || prev.includes('상춘')) return '고산(상춘) 기후';
+    return '';
   });
 
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
@@ -159,8 +217,12 @@ export default function QuizModal({
     const cleanFeature = inputFeature.trim();
 
     if (location.category === 'climate') {
-      if (!selectedClimate) {
-        alert('이 지역에 나타나는 기후를 선택해 주세요!');
+      if (!selectedClimateMain) {
+        alert('이 지역에서 볼 수 있는 기후(대분류)를 먼저 선택해 주세요!');
+        return;
+      }
+      if (CLIMATE_SUB_CHOICES[selectedClimateMain] && !selectedClimateSub) {
+        alert(`'${selectedClimateMain}'의 세부 기후(하부 요소)를 선택해 주세요!`);
         return;
       }
     } else {
@@ -188,7 +250,7 @@ export default function QuizModal({
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
     const cleanName = location.category === 'climate'
-      ? selectedClimate
+      ? `${selectedClimateMain} - ${selectedClimateSub || selectedClimateMain}`
       : `${selectedMainType} - ${selectedSubType}`;
 
     // 1. Name Check (지형 or 기후 선택지 정답 검사)
@@ -197,19 +259,23 @@ export default function QuizModal({
     let isSubCorrect = false;
 
     if (location.category === 'climate') {
-      if (location.subType && cleanName === location.subType) {
-        isNameCorrect = true;
-      } else {
-        const nameKeywords = [
-          ...(location.nameKeywords || []),
-          ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
-        ];
-        isNameCorrect = nameKeywords.some(kw => {
-          const normKw = kw.replace(/\s+/g, '').toLowerCase();
-          const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
-          return normInput.includes(normKw) || normKw.includes(normInput);
-        });
-      }
+      const expMain = location.mainType || location.subType || '';
+      const expSub = location.subType || '';
+
+      isMainCorrect = selectedClimateMain === expMain || expMain.includes(selectedClimateMain.slice(0, 2));
+      isSubCorrect = selectedClimateSub === expSub ||
+        (expSub.includes('우림') && selectedClimateSub.includes('우림')) ||
+        (expSub.includes('사바나') && selectedClimateSub.includes('사바나')) ||
+        (expSub.includes('서안') && selectedClimateSub.includes('서안')) ||
+        (expSub.includes('지중해') && selectedClimateSub.includes('지중해')) ||
+        (expSub.includes('계절풍') && selectedClimateSub.includes('계절풍')) ||
+        (expSub.includes('사막') && selectedClimateSub.includes('사막')) ||
+        (expSub.includes('초원') && selectedClimateSub.includes('초원')) ||
+        (expSub.includes('타이가') && selectedClimateSub.includes('타이가')) ||
+        (expSub.includes('툰드라') && selectedClimateSub.includes('툰드라')) ||
+        (expSub.includes('고산') && selectedClimateSub.includes('고산'));
+
+      isNameCorrect = isMainCorrect && (CLIMATE_SUB_CHOICES[selectedClimateMain] ? isSubCorrect : true);
     } else {
       const expMain = location.mainType || (['산맥', '고원', '화산', '산지'].includes(location.subType) ? '산' : (['하천', '강', '호수', '폭포'].includes(location.subType) ? '하천' : '해안'));
       const expSub = location.subType || '';
@@ -254,7 +320,7 @@ export default function QuizModal({
         isSuccess: true,
         score: 100,
         message: location.category === 'climate'
-          ? `🎉 참 잘했어요! 기후(${selectedClimate})와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`
+          ? `🎉 참 잘했어요! 기후(${selectedClimateMain} > ${selectedClimateSub})와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`
           : `🎉 참 잘했어요! 지형(${selectedMainType} > ${selectedSubType})과 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
         matchedKeywords: matchedFeatureKeywords
       });
@@ -262,7 +328,13 @@ export default function QuizModal({
     } else if (!isNameCorrect && isFeatureGood) {
       finalScore = 50;
       let nameHintMsg = '기후를 다시 확인해 보세요.';
-      if (location.category === 'landform') {
+      if (location.category === 'climate') {
+        if (isMainCorrect && !isSubCorrect) {
+          nameHintMsg = `'${selectedClimateMain}'은 맞았어요! 세부 기후(${selectedClimateSub})를 다시 확인해 보세요.`;
+        } else {
+          nameHintMsg = `기후의 대분류(${selectedClimateMain})를 다시 확인해 보세요.`;
+        }
+      } else if (location.category === 'landform') {
         if (isMainCorrect && !isSubCorrect) {
           nameHintMsg = `'${selectedMainType}' 지형은 맞았어요! 세부 지형(${selectedSubType})을 다시 확인해 보세요.`;
         } else {
@@ -614,65 +686,152 @@ export default function QuizModal({
                   </div>
                 )}
 
-                {/* Input 1: Landform (Hierarchical) or Climate (Clickable Choices) */}
+                {/* Input 1: Climate (Hierarchical 2-step Selection) */}
                 {location.category === 'climate' ? (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>
-                      이 지역에 나타나는 기후를 선택하세요:
-                    </label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {CLIMATE_CHOICES.map((opt) => {
-                        const isSelected = selectedClimate === opt.label;
-                        return (
-                          <button
-                            key={opt.label}
-                            type="button"
-                            disabled={!isInputAllowed}
-                            onClick={() => {
-                              if (!isInputAllowed) return;
-                              sound.playClick();
-                              setSelectedClimate(opt.label);
-                            }}
-                            style={{
-                              flex: '1 1 calc(33.333% - 8px)',
-                              minWidth: '110px',
-                              padding: '0.75rem 0.5rem',
-                              background: isSelected ? '#1ed760' : '#1f1f1f',
-                              color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
-                              border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
-                              borderRadius: '12px',
-                              fontSize: '0.92rem',
-                              fontWeight: isSelected ? 800 : 600,
-                              cursor: isInputAllowed ? 'pointer' : 'not-allowed',
-                              opacity: isInputAllowed ? 1 : 0.6,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                              boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
-                              transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (isInputAllowed && !isSelected) {
-                                e.currentTarget.style.borderColor = '#1ed760';
-                                e.currentTarget.style.background = '#282828';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (isInputAllowed && !isSelected) {
-                                e.currentTarget.style.borderColor = '#404040';
-                                e.currentTarget.style.background = '#1f1f1f';
-                              }
-                            }}
-                          >
-                            <span style={{ fontSize: '1.1rem' }}>{opt.icon}</span>
-                            <span>{opt.label}</span>
-                            {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
-                          </button>
-                        );
-                      })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Step 1: Main Climate Selection */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                          왼쪽의 사진에서 확인할 수 있는 기후는 무엇입니까?
+                        </label>
+                        {selectedClimateMain && (
+                          <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
+                            ✓ {selectedClimateMain} 선택됨
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                        {CLIMATE_MAIN_CHOICES.map((opt) => {
+                          const isSelected = selectedClimateMain === opt.label;
+                          return (
+                            <button
+                              key={opt.label}
+                              type="button"
+                              disabled={!isInputAllowed}
+                              onClick={() => {
+                                if (!isInputAllowed) return;
+                                sound.playClick();
+                                if (selectedClimateMain !== opt.label) {
+                                  setSelectedClimateMain(opt.label);
+                                  setSelectedClimateSub('');
+                                }
+                              }}
+                              style={{
+                                padding: '0.8rem 0.5rem',
+                                background: isSelected ? '#1ed760' : '#1f1f1f',
+                                color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
+                                border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
+                                borderRadius: '12px',
+                                fontSize: '0.95rem',
+                                fontWeight: isSelected ? 900 : 700,
+                                cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                                opacity: isInputAllowed ? 1 : 0.6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
+                                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isInputAllowed && !isSelected) {
+                                  e.currentTarget.style.borderColor = '#1ed760';
+                                  e.currentTarget.style.background = '#282828';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (isInputAllowed && !isSelected) {
+                                  e.currentTarget.style.borderColor = '#404040';
+                                  e.currentTarget.style.background = '#1f1f1f';
+                                }
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem' }}>{opt.icon}</span>
+                              <span>{opt.label}</span>
+                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {/* Step 2: Climate Sub-element Selection */}
+                    {selectedClimateMain && CLIMATE_SUB_CHOICES[selectedClimateMain] && (
+                      <div style={{
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        borderRadius: '14px',
+                        padding: '12px 14px',
+                        animation: 'fadeIn 0.2s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span>👉 다음에서 왼쪽 사진의 기후로 알맞은 것을 고르시오.</span>
+                          </label>
+                          {selectedClimateSub && (
+                            <span style={{ fontSize: '0.78rem', background: '#1ed760', color: '#000000', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
+                              {selectedClimateMain} &gt; {selectedClimateSub}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {CLIMATE_SUB_CHOICES[selectedClimateMain].map((subOpt) => {
+                            const isSubSelected = selectedClimateSub === subOpt.label;
+                            return (
+                              <button
+                                key={subOpt.label}
+                                type="button"
+                                disabled={!isInputAllowed}
+                                onClick={() => {
+                                  if (!isInputAllowed) return;
+                                  sound.playClick();
+                                  setSelectedClimateSub(subOpt.label);
+                                }}
+                                style={{
+                                  flex: '1 1 calc(33.333% - 8px)',
+                                  minWidth: '110px',
+                                  padding: '0.7rem 0.6rem',
+                                  background: isSubSelected ? '#38bdf8' : '#181818',
+                                  color: isSubSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
+                                  border: isSubSelected ? '2px solid #38bdf8' : '1px solid #383838',
+                                  borderRadius: '10px',
+                                  fontSize: '0.9rem',
+                                  fontWeight: isSubSelected ? 900 : 700,
+                                  cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                                  opacity: isInputAllowed ? 1 : 0.6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '6px',
+                                  boxShadow: isSubSelected ? '0 4px 14px rgba(56, 189, 248, 0.35)' : 'none',
+                                  transform: isSubSelected ? 'scale(1.02)' : 'scale(1)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (isInputAllowed && !isSubSelected) {
+                                    e.currentTarget.style.borderColor = '#38bdf8';
+                                    e.currentTarget.style.background = '#20293a';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (isInputAllowed && !isSubSelected) {
+                                    e.currentTarget.style.borderColor = '#383838';
+                                    e.currentTarget.style.background = '#181818';
+                                  }
+                                }}
+                              >
+                                <span style={{ fontSize: '1.05rem' }}>{subOpt.icon}</span>
+                                <span>{subOpt.label}</span>
+                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
