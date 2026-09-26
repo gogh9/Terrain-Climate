@@ -130,13 +130,13 @@ export const compareStudents = (rawA, rawB) => {
   return (a.name || '').localeCompare(b.name || '', 'ko');
 };
 
-// 세션 카테고리에 따른 지점 열 목록 계산 (지형: 지형 12개 표준 순서, 기후: 기후 12개 표준 순서)
+// 세션 카테고리에 따른 지점 열 목록 계산 (지형: 12개, 기후: 12개, 전체: 24개)
 export const getColumnsForSession = (session) => {
-  const isClimate = session?.categoryFilter === 'climate';
-  const isLandform = session?.categoryFilter === 'landform';
-  if (isClimate) return CLIMATE_ORDER;
-  if (isLandform) return LANDFORM_ORDER;
-  return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
+  const filter = session?.categoryFilter;
+  if (filter === 'climate') return CLIMATE_ORDER;
+  if (filter === 'landform') return LANDFORM_ORDER;
+  if (filter === 'all') return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
+  return LANDFORM_ORDER;
 };
 
 // 세션별 제출 데이터 추출 헬퍼 (회차별 100% 엄격 격리 및 시간대 보존 세션 지원)
@@ -716,20 +716,29 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     });
   };
 
-  // Toggle Category Filter (Landform / Climate)
+  // Toggle Category Filter (Landform / Climate / All)
   const handleCategoryChange = (sessionId, category) => {
     sound.playClick();
     const strId = String(sessionId);
     setActiveSessionId(strId);
     setSessions(prev => {
-      const updated = prev.map(s => {
-        if (String(s.id) === strId) {
-          broadcastSessionConfig(strId, { ...s, categoryFilter: category });
-          return { ...s, categoryFilter: category };
+      const exists = prev.some(s => String(s.id) === strId);
+      if (exists) {
+        return prev.map(s => {
+          if (String(s.id) === strId) {
+            broadcastSessionConfig(strId, { ...s, categoryFilter: category });
+            return { ...s, categoryFilter: category };
+          }
+          return s;
+        });
+      } else {
+        // For dynamic/time sessions, record teacher's category override in state
+        const target = mergedSessions.find(s => String(s.id) === strId);
+        if (target) {
+          return [...prev, { ...target, categoryFilter: category }];
         }
-        return s;
-      });
-      return updated;
+        return prev;
+      }
     });
   };
 
@@ -882,12 +891,24 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       const dateStr = !isNaN(d.getTime()) ? `${d.getMonth() + 1}. ${d.getDate()}.` : '';
       const hourStr = !isNaN(d.getTime()) ? `${d.getHours()}시` : '';
 
-      const isClimate = g.submissions.some(s => (s.location_id || '').includes('climate') || (s.location_title || '').includes('기후'));
+      // Count climate vs landform submissions accurately based on majority
+      const climateCount = g.submissions.filter(s => (s.location_id || '').includes('climate') || (s.location_title || '').includes('기후')).length;
+      const landformCount = g.submissions.length - climateCount;
+
+      let category = 'landform';
+      if (climateCount > 0 && landformCount > 0) {
+        category = climateCount > landformCount ? 'climate' : 'landform';
+      } else if (climateCount > 0) {
+        category = 'climate';
+      }
+
+      // Check if teacher has an existing custom session override for this time session
+      const existingOverride = sessions.find(s => String(s.id) === `time_session_${idx + 1}`);
 
       return {
         id: `time_session_${idx + 1}`,
         title: `${idx + 1}회 (${dateStr} ${hourStr} 수업)`,
-        categoryFilter: isClimate ? 'climate' : 'landform',
+        categoryFilter: existingOverride?.categoryFilter || category,
         continents: [...ALL_CONTINENTS],
         isOpen: true,
         allowExplore: true,
@@ -1592,7 +1613,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#b3b3b3' }}>
                 <span style={{ fontWeight: 600 }}>학습 주제:</span>
                 <select
-                  value={session.categoryFilter === 'climate' ? 'climate' : 'landform'}
+                  value={session.categoryFilter || 'landform'}
                   onChange={(e) => handleCategoryChange(session.id, e.target.value)}
                   style={{
                     background: '#1f1f1f',
@@ -1608,6 +1629,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 >
                   <option value="landform">🏔️ 지형 (12개 지점)</option>
                   <option value="climate">☀️ 기후 (12개 지점)</option>
+                  <option value="all">🌐 전체 (24개 지점)</option>
                 </select>
               </div>
 
@@ -1781,20 +1803,20 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         {/* Section Header with Stats & Controls */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                 📝 [{activeSession?.title || '선택된 지도'}] 학생 학습 제출 내용 확인 & 관리
               </h2>
               <span style={{
-                background: activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(2, 132, 199, 0.2)',
-                color: activeSession?.categoryFilter === 'climate' ? '#fbbf24' : '#38bdf8',
+                background: activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.2)' : (activeSession?.categoryFilter === 'all' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(2, 132, 199, 0.2)'),
+                color: activeSession?.categoryFilter === 'climate' ? '#fbbf24' : (activeSession?.categoryFilter === 'all' ? '#4ade80' : '#38bdf8'),
                 fontSize: '0.78rem',
                 fontWeight: 800,
                 padding: '3px 10px',
                 borderRadius: '9999px',
-                border: `1px solid ${activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(2, 132, 199, 0.4)'}`
+                border: `1px solid ${activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.4)' : (activeSession?.categoryFilter === 'all' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(2, 132, 199, 0.4)')}`
               }}>
-                {activeSession?.categoryFilter === 'climate' ? '☀️ 기후' : '🏔️ 지형'}
+                {activeSession?.categoryFilter === 'climate' ? '☀️ 기후 (12개)' : (activeSession?.categoryFilter === 'all' ? '🌐 전체 지형·기후 (24개)' : '🏔️ 지형 (12개)')}
               </span>
               <span style={{ background: '#282828', color: '#1ed760', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
                 참여 학생 {studentNames.length}명 ({sessionSubmissions.length}개 답안)
@@ -1934,49 +1956,117 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               })}
             </div>
 
-            {/* Right: View Mode Toggle (시간대별 분리 묶어보기 vs 단일 테이블) */}
-            {timeGroups.length > 1 && selectedTimeGroup === 'ALL' && (
-              <div style={{ display: 'flex', alignItems: 'center', background: '#121212', borderRadius: '8px', padding: '3px', border: '1px solid #2a2a2a' }}>
+            {/* Controls: Quick Topic Toggle & View Mode Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Quick Topic Switcher: 지형 / 기후 / 전체 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#121212', borderRadius: '8px', padding: '3px', border: '1px solid #2a2a2a' }}>
+                <span style={{ fontSize: '0.74rem', color: '#a1a1aa', fontWeight: 700, padding: '0 5px' }}>주제:</span>
                 <button
-                  onClick={() => { sound.playClick(); setTimeViewMode('grouped'); }}
+                  onClick={() => handleCategoryChange(activeSession.id, 'landform')}
                   style={{
-                    background: timeViewMode === 'grouped' ? '#282828' : 'transparent',
-                    color: timeViewMode === 'grouped' ? '#1ed760' : '#888888',
+                    background: (!activeSession?.categoryFilter || activeSession?.categoryFilter === 'landform') ? '#0284c7' : 'transparent',
+                    color: (!activeSession?.categoryFilter || activeSession?.categoryFilter === 'landform') ? '#ffffff' : '#94a3b8',
                     border: 'none',
-                    padding: '4px 10px',
+                    padding: '3px 8px',
                     borderRadius: '6px',
-                    fontSize: '0.76rem',
-                    fontWeight: timeViewMode === 'grouped' ? 800 : 600,
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
                     cursor: 'pointer',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '3px',
+                    transition: 'all 0.15s ease'
                   }}
+                  title="지형 12개 지점 표 보기"
                 >
-                  <Layers size={13} />
-                  시간대별 분리 묶어보기
+                  🏔️ 지형 (12)
                 </button>
                 <button
-                  onClick={() => { sound.playClick(); setTimeViewMode('single'); }}
+                  onClick={() => handleCategoryChange(activeSession.id, 'climate')}
                   style={{
-                    background: timeViewMode === 'single' ? '#282828' : 'transparent',
-                    color: timeViewMode === 'single' ? '#1ed760' : '#888888',
+                    background: activeSession?.categoryFilter === 'climate' ? '#d97706' : 'transparent',
+                    color: activeSession?.categoryFilter === 'climate' ? '#ffffff' : '#fcd34d',
                     border: 'none',
-                    padding: '4px 10px',
+                    padding: '3px 8px',
                     borderRadius: '6px',
-                    fontSize: '0.76rem',
-                    fontWeight: timeViewMode === 'single' ? 800 : 600,
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
                     cursor: 'pointer',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '3px',
+                    transition: 'all 0.15s ease'
                   }}
+                  title="기후 12개 지점 표 보기"
                 >
-                  <Table size={13} />
-                  단일 통합 테이블
+                  ☀️ 기후 (12)
+                </button>
+                <button
+                  onClick={() => handleCategoryChange(activeSession.id, 'all')}
+                  style={{
+                    background: activeSession?.categoryFilter === 'all' ? '#16a34a' : 'transparent',
+                    color: activeSession?.categoryFilter === 'all' ? '#ffffff' : '#86efac',
+                    border: 'none',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="지형과 기후 24개 지점 전체 표 보기"
+                >
+                  🌐 전체 (24)
                 </button>
               </div>
-            )}
+
+              {/* View Mode Toggle (시간대별 분리 묶어보기 vs 단일 테이블) */}
+              {timeGroups.length > 1 && selectedTimeGroup === 'ALL' && (
+                <div style={{ display: 'flex', alignItems: 'center', background: '#121212', borderRadius: '8px', padding: '3px', border: '1px solid #2a2a2a' }}>
+                  <button
+                    onClick={() => { sound.playClick(); setTimeViewMode('grouped'); }}
+                    style={{
+                      background: timeViewMode === 'grouped' ? '#282828' : 'transparent',
+                      color: timeViewMode === 'grouped' ? '#1ed760' : '#888888',
+                      border: 'none',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.76rem',
+                      fontWeight: timeViewMode === 'grouped' ? 800 : 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Layers size={13} />
+                    시간대별 묶어보기
+                  </button>
+                  <button
+                    onClick={() => { sound.playClick(); setTimeViewMode('single'); }}
+                    style={{
+                      background: timeViewMode === 'single' ? '#282828' : 'transparent',
+                      color: timeViewMode === 'single' ? '#1ed760' : '#888888',
+                      border: 'none',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.76rem',
+                      fontWeight: timeViewMode === 'single' ? 800 : 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Table size={13} />
+                    통합 테이블
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
