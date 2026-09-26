@@ -138,17 +138,14 @@ export const getColumnsForSession = (session) => {
   return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
 };
 
-// 세션별 제출 데이터 추출 헬퍼 (1회차 레거시 데이터 호환 및 회차별 엄격 격리)
-export const getSubmissionsForSession = (session, allSubmissions = [], allSessions = []) => {
-  if (!session) return [];
+// 세션별 제출 데이터 추출 헬퍼 (회차별 100% 엄격 격리)
+export const getSubmissionsForSession = (session, allSubmissions = []) => {
+  if (!session || !session.id) return [];
   const targetId = String(session.id);
-  const isFirstSession = allSessions.length > 0 ? String(allSessions[0].id) === targetId : targetId === '1';
 
   return allSubmissions.filter(sub => {
-    if (!sub) return false;
-    const subSid = String(sub.session_id || '1');
-    const matchesSession = subSid === targetId || (isFirstSession && (subSid === '1' || !sub.session_id));
-    return matchesSession;
+    if (!sub || !sub.session_id) return false;
+    return String(sub.session_id) === targetId;
   });
 };
 
@@ -300,13 +297,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     sessionIdsRef.current = sessions.map(s => String(s.id));
   }, [sessions]);
 
-  // Fetch Submissions including legacy 1st session compatibility
+  // Fetch Submissions strictly for current user sessions
   const loadSubmissions = async () => {
     const currentIds = sessionIdsRef.current;
-    // Include '1' in allowedSessionIds so existing 1st session student records are always retrieved
-    const allowed = Array.from(new Set([...currentIds, '1']));
+    if (!currentIds || currentIds.length === 0) return;
+    const allowed = Array.from(new Set(currentIds));
     const res = await fetchAllSubmissions({
-      limit: 500,
+      limit: 1000,
       allowedSessionIds: allowed,
       user
     });
@@ -730,14 +727,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
     // 1. Immediately filter out from React state for zero UI latency
     setSubmissions(prev => prev.filter(sub => {
-      const sid = String(sub.session_id || '1');
+      const sid = String(sub.session_id || '');
       return sid !== targetSessionId;
     }));
 
     // 2. Perform comprehensive reset (blacklist IDs + reset timestamp + clear local cache + Supabase delete)
     const toDelete = submissions.filter(sub => {
-      if (sub.session_id) return String(sub.session_id) === targetSessionId;
-      return targetSessionId === '1';
+      return String(sub.session_id || '') === targetSessionId;
     });
     await resetSessionSubmissions(targetSessionId, toDelete, user);
 
@@ -776,8 +772,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
   // Submissions filtered strictly for the Active Session & Category
   const sessionSubmissions = useMemo(() => {
-    return getSubmissionsForSession(activeSession, submissions, sessions);
-  }, [submissions, activeSession, sessions]);
+    return getSubmissionsForSession(activeSession, submissions);
+  }, [submissions, activeSession]);
 
   // Columns for Active Session (Strictly 12 standard columns according to session category)
   const activeColumns = useMemo(() => {
@@ -788,7 +784,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const handleExportExcel = (session) => {
     sound.playClick();
     const targetSession = session || activeSession;
-    const targetSubmissions = getSubmissionsForSession(targetSession, submissions, sessions);
+    const targetSubmissions = getSubmissionsForSession(targetSession, submissions);
 
     if (targetSubmissions.length === 0) {
       alert(`'${targetSession.title}' 지도에 저장된 제출 데이터가 없습니다.`);
@@ -1068,7 +1064,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           const isSelected = String(activeSessionId) === String(session.id);
           const isClimate = session.categoryFilter === 'climate';
           const isLandform = session.categoryFilter === 'landform';
-          const sessionSubmissionsForCard = getSubmissionsForSession(session, submissions, sessions);
+          const sessionSubmissionsForCard = getSubmissionsForSession(session, submissions);
           const cardStudentCount = new Set(sessionSubmissionsForCard.map(s => s.student_name || '익명')).size;
           const sessionSubCount = sessionSubmissionsForCard.length;
 

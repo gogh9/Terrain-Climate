@@ -68,7 +68,7 @@ export function encodeSessionInFeature(featureText, sessionId) {
 }
 
 // Helper to extract embedded sessionId from feature text
-export function decodeSessionFromFeature(rawFeature, fallbackSessionId = '1') {
+export function decodeSessionFromFeature(rawFeature, fallbackSessionId = '') {
   if (!rawFeature) return { sessionId: fallbackSessionId, featureText: '' };
   const match = String(rawFeature).match(/<!--SID:(.*?)-->/);
   const sessionId = match && match[1] ? match[1] : fallbackSessionId;
@@ -371,12 +371,12 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     if (item.location_id === '__session_config__') return false;
     if (item.id && deletedIds.has(String(item.id))) return false;
     
-    const sid = String(item.session_id || '1');
+    const sid = String(item.session_id || '');
     
-    // If allowedSessionIds are specified, filter matching sessions
+    // If allowedSessionIds are specified, filter strictly matching sessions
     if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
       const allowedSet = new Set(allowedSessionIds.map(String));
-      if (!allowedSet.has(sid) && !(allowedSet.has('1') && (!item.session_id || item.session_id === '1'))) {
+      if (!allowedSet.has(sid)) {
         return false;
       }
     }
@@ -410,10 +410,10 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
 
   // Parse and decode embedded sessionId from rawRemoteData
   const remoteData = rawRemoteData.map(item => {
-    const { sessionId: decodedSid, featureText } = decodeSessionFromFeature(item.answer_feature, item.session_id || '1');
+    const { sessionId: decodedSid, featureText } = decodeSessionFromFeature(item.answer_feature, item.session_id || '');
     return {
       ...item,
-      session_id: String(item.session_id || decodedSid || '1'),
+      session_id: String(item.session_id || decodedSid || ''),
       answer_feature: featureText || item.answer_feature
     };
   });
@@ -445,7 +445,7 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
       const localMatch = localMap.get(key);
       const enrichedItem = {
         ...item,
-        session_id: item.session_id || localMatch?.session_id || '1'
+        session_id: item.session_id || localMatch?.session_id || ''
       };
       if (isSubmissionValid(enrichedItem)) {
         merged.push(enrichedItem);
@@ -458,7 +458,7 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     const key = `${item.student_name}_${item.location_id}_${item.created_at?.slice(0, 16)}`;
     if (!seen.has(key)) {
       seen.add(key);
-      const candidate = { ...item, session_id: item.session_id || '1' };
+      const candidate = { ...item, session_id: item.session_id || '' };
       if (isSubmissionValid(candidate)) {
         merged.push(candidate);
       }
@@ -560,7 +560,7 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
   try {
     const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
     currentSubmissions.forEach(sub => {
-      const subSid = String(sub.session_id || '1');
+      const subSid = String(sub.session_id || '');
       if (subSid === sid && sub.id) {
         if (!deletedList.includes(String(sub.id))) {
           deletedList.push(String(sub.id));
@@ -573,7 +573,7 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
   // 3. Clear local quiz submissions for this session
   try {
     const local = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
-    const filtered = local.filter(sub => String(sub.session_id || '1') !== sid);
+    const filtered = local.filter(sub => String(sub.session_id || '') !== sid);
     localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filtered));
     localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
   } catch (e) {}
