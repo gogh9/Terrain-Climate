@@ -1891,102 +1891,6 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         </div>
       </div>
 
-      {/* SECTION 2: Archived Historical Sessions (Accordion Collapsible) */}
-      {archivedTimeSessions.length > 0 && (
-        <div style={{
-          marginTop: '1.5rem',
-          marginBottom: '2.5rem',
-          background: '#141414',
-          border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.4)' : '#282828'),
-          borderRadius: '16px',
-          overflow: 'hidden',
-          transition: 'all 0.2s ease'
-        }}>
-          {/* Accordion Header */}
-          <div
-            onClick={() => setIsArchivedOpen(prev => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '1.25rem 1.5rem',
-              cursor: 'pointer',
-              userSelect: 'none',
-              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.04)' : 'transparent',
-              transition: 'background 0.2s ease',
-              flexWrap: 'wrap',
-              gap: '12px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '8px',
-                background: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Clock size={18} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
-                    📦 과거 수업 보관 지도
-                  </h2>
-                  <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px' }}>
-                    보관 {archivedTimeSessions.length}개
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#a1a1aa', marginTop: '3px' }}>
-                  서버 이전 과정에서 이전 자료를 링크로 저장해두었습니다.
-                </div>
-              </div>
-            </div>
-
-            {/* Accordion Toggle Button */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.12)'),
-              color: isArchivedOpen ? '#38bdf8' : '#cbd5e1',
-              padding: '6px 14px',
-              borderRadius: '8px',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              transition: 'all 0.15s ease'
-            }}>
-              <span>{isArchivedOpen ? '보관 목록 접기' : '보관 목록 펼치기'}</span>
-              {isArchivedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
-          </div>
-
-          {/* Accordion Content */}
-          {isArchivedOpen && (
-            <div style={{
-              padding: '0 1.5rem 1.5rem 1.5rem',
-              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-              paddingTop: '1.25rem'
-            }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
-                  gap: '1.25rem'
-                }}
-              >
-                {archivedTimeSessions.map(session => renderSessionCard(session, true))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Student Submissions Section */}
       <div style={{ marginTop: '1.5rem' }}>
         {/* Section Header with Stats & Controls */}
@@ -2791,6 +2695,102 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           </div>
         )}
       </div>
+
+      {/* SECTION: Archived Historical Sessions (Accordion Collapsible - Placed below student submissions) */}
+      {archivedTimeSessions.length > 0 && (
+        <div style={{
+          marginTop: '2.5rem',
+          marginBottom: '2rem',
+          background: '#141414',
+          border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.4)' : '#282828'),
+          borderRadius: '16px',
+          overflow: 'hidden',
+          transition: 'all 0.2s ease'
+        }}>
+          {/* Accordion Header */}
+          <div
+            onClick={() => setIsArchivedOpen(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.25rem 1.5rem',
+              cursor: 'pointer',
+              userSelect: 'none',
+              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.04)' : 'transparent',
+              transition: 'background 0.2s ease',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Clock size={18} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                    📦 과거 수업 보관 지도
+                  </h2>
+                  <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', fontSize: '0.74rem', fontWeight: 800, padding: '2px 8px', borderRadius: '9999px' }}>
+                    보관 {archivedTimeSessions.length}개
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#a1a1aa', marginTop: '3px' }}>
+                  서버 이전 과정에서 이전 자료를 링크로 저장해두었습니다.
+                </div>
+              </div>
+            </div>
+
+            {/* Accordion Toggle Button */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.12)'),
+              color: isArchivedOpen ? '#38bdf8' : '#cbd5e1',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              transition: 'all 0.15s ease'
+            }}>
+              <span>{isArchivedOpen ? '보관 목록 접기' : '보관 목록 펼치기'}</span>
+              {isArchivedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
+          </div>
+
+          {/* Accordion Content */}
+          {isArchivedOpen && (
+            <div style={{
+              padding: '0 1.5rem 1.5rem 1.5rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              paddingTop: '1.25rem'
+            }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
+                  gap: '1.25rem'
+                }}
+              >
+                {archivedTimeSessions.map(session => renderSessionCard(session, true))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Detail Inspection Modal */}
       {selectedSubmission && (() => {

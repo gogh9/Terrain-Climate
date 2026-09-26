@@ -49,6 +49,13 @@ export default function App() {
       return null;
     }
   });
+  const [urlOpen, setUrlOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('open');
+    } catch {
+      return null;
+    }
+  });
   const [sessionParam, setSessionParam] = useState(() => {
     try {
       return new URLSearchParams(window.location.search).get('session');
@@ -104,9 +111,15 @@ export default function App() {
       const sessionId = params.get('session');
       const categoryParam = params.get('category');
       const exploreParam = params.get('explore');
+      const openParam = params.get('open');
       const titleParam = params.get('title');
       if (sessionId) {
         setSessionParam(sessionId);
+        if (exploreParam !== null) setUrlExplore(exploreParam);
+        if (openParam !== null) {
+          setUrlOpen(openParam);
+          setSessionIsOpen(openParam !== '0');
+        }
         const savedView = localStorage.getItem('geo_active_view');
         if (savedView !== 'workspace') {
           setActiveView('map');
@@ -144,6 +157,9 @@ export default function App() {
           if (found.categoryFilter) {
             setUrlCategory(found.categoryFilter);
           }
+          if (found.isOpen !== undefined) {
+            setSessionIsOpen(Boolean(found.isOpen));
+          }
         } else {
           // If not found in localStorage (e.g. on student device), reconstruct session object from URL params
           setCurrentSession({
@@ -151,8 +167,11 @@ export default function App() {
             title: titleParam ? decodeURIComponent(titleParam) : '우리 반 세계지도',
             categoryFilter: categoryParam || 'landform',
             allowExplore: exploreParam !== '0',
-            isOpen: true
+            isOpen: openParam !== '0'
           });
+          if (openParam !== null) {
+            setSessionIsOpen(openParam !== '0');
+          }
         }
       }
       if (categoryParam) {
@@ -160,6 +179,9 @@ export default function App() {
       }
       if (exploreParam !== null) {
         setUrlExplore(exploreParam);
+      }
+      if (openParam !== null) {
+        setUrlOpen(openParam);
       }
     } catch (e) {
       console.warn('URL param parse error', e);
@@ -238,16 +260,14 @@ export default function App() {
   }, [effectiveSessionId]);
 
   // Determine whether textbook exploration tab is allowed in QuizModal
-  const allowExplore = Boolean(user)
-    ? true
-    : (sessionAllowExplore !== undefined
-        ? sessionAllowExplore
-        : (currentSession?.allowExplore !== undefined
-            ? currentSession.allowExplore !== false
-            : (urlExplore !== null ? urlExplore !== '0' : true)));
+  const allowExplore = sessionAllowExplore !== undefined
+    ? sessionAllowExplore
+    : (currentSession?.allowExplore !== undefined
+        ? currentSession.allowExplore !== false
+        : (urlExplore !== null ? urlExplore !== '0' : true));
 
   // Determine whether submissions/inputs are allowed in QuizModal
-  const isSubmissionOpen = Boolean(user) ? true : sessionIsOpen;
+  const isSubmissionOpen = sessionIsOpen !== false && (currentSession?.isOpen !== false) && (urlOpen !== null ? urlOpen !== '0' : true);
 
   // Completed IDs & Typed Answers isolated per session
   const [completedIds, setCompletedIds] = useState(() => {

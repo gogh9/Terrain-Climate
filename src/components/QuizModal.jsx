@@ -82,7 +82,7 @@ export default function QuizModal({
   isOpen = true
 }) {
   const canExplore = Boolean(user) || allowExplore !== false;
-  const isInputAllowed = Boolean(user) || isOpen !== false;
+  const isInputAllowed = isOpen !== false;
   const [activeTab, setActiveTab] = useState('quiz');
 
   useEffect(() => {

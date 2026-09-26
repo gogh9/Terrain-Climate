@@ -27,8 +27,9 @@ export function getStudentShareUrl(session) {
   const baseUrl = window.location.origin + window.location.pathname;
   const cat = session.categoryFilter || 'landform';
   const explore = session.allowExplore !== false ? '1' : '0';
+  const open = session.isOpen !== false ? '1' : '0';
   const title = encodeURIComponent(session.title || '');
-  return `${baseUrl}?session=${session.id}&category=${cat}&explore=${explore}&title=${title}`;
+  return `${baseUrl}?session=${session.id}&category=${cat}&explore=${explore}&open=${open}&title=${title}`;
 }
 
 /**
