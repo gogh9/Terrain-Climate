@@ -721,6 +721,8 @@ export default function QuizModal({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '6px',
+                                wordBreak: 'keep-all',
+                                textAlign: 'center',
                                 boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
                                 transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                                 transition: 'all 0.15s ease'
@@ -738,9 +740,9 @@ export default function QuizModal({
                                 }
                               }}
                             >
-                              <span style={{ fontSize: '1.2rem' }}>{opt.icon}</span>
-                              <span>{opt.label}</span>
-                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                              <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>{opt.icon}</span>
+                              <span style={{ wordBreak: 'keep-all', lineHeight: 1.25 }}>{opt.label}</span>
+                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900, flexShrink: 0 }}>✓</span>}
                             </button>
                           );
                         })}
@@ -796,6 +798,8 @@ export default function QuizModal({
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   gap: '6px',
+                                  wordBreak: 'keep-all',
+                                  textAlign: 'center',
                                   boxShadow: isSubSelected ? '0 4px 14px rgba(56, 189, 248, 0.35)' : 'none',
                                   transform: isSubSelected ? 'scale(1.02)' : 'scale(1)',
                                   transition: 'all 0.15s ease'
@@ -813,9 +817,9 @@ export default function QuizModal({
                                   }
                                 }}
                               >
-                                <span style={{ fontSize: '1.05rem' }}>{subOpt.icon}</span>
-                                <span>{subOpt.label}</span>
-                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>✓</span>}
+                                <span style={{ fontSize: '1.05rem', flexShrink: 0 }}>{subOpt.icon}</span>
+                                <span style={{ wordBreak: 'keep-all', lineHeight: 1.25, textAlign: 'center' }}>{subOpt.label}</span>
+                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900, flexShrink: 0 }}>✓</span>}
                               </button>
                             );
                           })}
@@ -867,6 +871,8 @@ export default function QuizModal({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '6px',
+                                wordBreak: 'keep-all',
+                                textAlign: 'center',
                                 boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
                                 transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                                 transition: 'all 0.15s ease'
@@ -884,9 +890,9 @@ export default function QuizModal({
                                 }
                               }}
                             >
-                              <span style={{ fontSize: '1.2rem' }}>{opt.icon}</span>
-                              <span>{opt.label}</span>
-                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                              <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>{opt.icon}</span>
+                              <span style={{ wordBreak: 'keep-all', lineHeight: 1.25 }}>{opt.label}</span>
+                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900, flexShrink: 0 }}>✓</span>}
                             </button>
                           );
                         })}
@@ -942,6 +948,8 @@ export default function QuizModal({
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   gap: '6px',
+                                  wordBreak: 'keep-all',
+                                  textAlign: 'center',
                                   boxShadow: isSubSelected ? '0 4px 14px rgba(56, 189, 248, 0.35)' : 'none',
                                   transform: isSubSelected ? 'scale(1.02)' : 'scale(1)',
                                   transition: 'all 0.15s ease'
@@ -959,9 +967,9 @@ export default function QuizModal({
                                   }
                                 }}
                               >
-                                <span style={{ fontSize: '1.1rem' }}>{subOpt.icon}</span>
-                                <span>{subOpt.label}</span>
-                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>✓</span>}
+                                <span style={{ fontSize: '1.05rem', flexShrink: 0 }}>{subOpt.icon}</span>
+                                <span style={{ wordBreak: 'keep-all', lineHeight: 1.25, textAlign: 'center' }}>{subOpt.label}</span>
+                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900, flexShrink: 0 }}>✓</span>}
                               </button>
                             );
                           })}
