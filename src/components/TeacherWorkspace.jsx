@@ -143,18 +143,12 @@ export const getSubmissionsForSession = (session, allSubmissions = [], allSessio
   if (!session) return [];
   const targetId = String(session.id);
   const isFirstSession = allSessions.length > 0 ? String(allSessions[0].id) === targetId : targetId === '1';
-  const isClimate = session.categoryFilter === 'climate';
-  const isLandform = session.categoryFilter === 'landform';
 
   return allSubmissions.filter(sub => {
+    if (!sub) return false;
     const subSid = String(sub.session_id || '1');
     const matchesSession = subSid === targetId || (isFirstSession && (subSid === '1' || !sub.session_id));
-    if (!matchesSession) return false;
-
-    const title = normalizeTitle(sub.location_title || sub.answer_name);
-    if (isLandform) return LANDFORM_ORDER.includes(title);
-    if (isClimate) return CLIMATE_ORDER.includes(title);
-    return true;
+    return matchesSession;
   });
 };
 

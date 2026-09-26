@@ -179,7 +179,9 @@ export default function QuizModal({
       : [];
     const isFeatureGood = matchedFeatureKeywords.length >= 2;
 
+    let finalScore = 30;
     if (isNameCorrect && isFeatureGood) {
+      finalScore = 100;
       sound.playSuccess();
       confetti({
         particleCount: 80,
@@ -193,16 +195,8 @@ export default function QuizModal({
         matchedKeywords: matchedFeatureKeywords
       });
       onComplete(location.id, { name: cleanName, feature: cleanFeature });
-      saveQuizSubmission({
-        sessionId: String(sessionId || '1'),
-        locationId: location.id,
-        locationTitle: location.name,
-        studentName: effectiveStudentName,
-        answerName: cleanName,
-        answerFeature: cleanFeature,
-        score: 100
-      });
     } else if (!isNameCorrect && isFeatureGood) {
+      finalScore = 50;
       setFeedback({
         isSuccess: false,
         score: 50,
@@ -212,6 +206,7 @@ export default function QuizModal({
         matchedKeywords: matchedFeatureKeywords
       });
     } else if (isNameCorrect && !isFeatureGood) {
+      finalScore = 50;
       setFeedback({
         isSuccess: false,
         score: 50,
@@ -221,6 +216,7 @@ export default function QuizModal({
         matchedKeywords: matchedFeatureKeywords
       });
     } else {
+      finalScore = 30;
       setFeedback({
         isSuccess: false,
         score: 30,
@@ -230,6 +226,17 @@ export default function QuizModal({
         matchedKeywords: matchedFeatureKeywords
       });
     }
+
+    // Always record and broadcast submission to teacher in real time
+    saveQuizSubmission({
+      sessionId: String(sessionId || '1'),
+      locationId: location.id,
+      locationTitle: location.name,
+      studentName: effectiveStudentName,
+      answerName: cleanName,
+      answerFeature: cleanFeature,
+      score: finalScore
+    });
   };
 
   return (
