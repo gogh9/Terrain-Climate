@@ -106,6 +106,38 @@ export function broadcastSubmission(submission) {
 }
 
 /**
+ * Broadcast deletion of a student's specific submission
+ */
+export function broadcastDeletion(delInfo) {
+  try {
+    const ch = getSubmissionChannel();
+    ch.send({
+      type: 'broadcast',
+      event: 'delete_submission',
+      payload: delInfo
+    });
+  } catch (e) {
+    console.warn('Broadcast deletion warning:', e);
+  }
+}
+
+/**
+ * Broadcast full reset of a session to all students
+ */
+export function broadcastReset(resetInfo) {
+  try {
+    const ch = getSubmissionChannel();
+    ch.send({
+      type: 'broadcast',
+      event: 'reset_session',
+      payload: resetInfo
+    });
+  } catch (e) {
+    console.warn('Broadcast reset warning:', e);
+  }
+}
+
+/**
  * Subscribe to new student submissions in real time
  */
 export function subscribeSubmissions(onNewSubmission) {
@@ -120,7 +152,33 @@ export function subscribeSubmissions(onNewSubmission) {
   ch.on('broadcast', { event: 'new_submission' }, listener);
 
   return () => {
-    // Keep channel alive, just stop listening if needed
+    // Keep channel alive
+  };
+}
+
+/**
+ * Subscribe to deletions and session resets in real time (for student devices)
+ */
+export function subscribeDeletions(onDelete, onReset) {
+  const ch = getSubmissionChannel();
+
+  const deleteListener = (event) => {
+    if (event?.payload && onDelete) {
+      onDelete(event.payload);
+    }
+  };
+
+  const resetListener = (event) => {
+    if (event?.payload && onReset) {
+      onReset(event.payload);
+    }
+  };
+
+  ch.on('broadcast', { event: 'delete_submission' }, deleteListener);
+  ch.on('broadcast', { event: 'reset_session' }, resetListener);
+
+  return () => {
+    // Keep channel alive
   };
 }
 
@@ -422,16 +480,21 @@ export async function fetchRecentSubmissions({ limit = 10, allowedSessionIds = n
 }
 
 /**
- * Delete a submission by ID
+ * Delete a submission by ID or submission object with realtime broadcast to students
  */
-export async function deleteSubmission(id, user = null) {
-  const strId = String(id);
+export async function deleteSubmission(submissionOrId, user = null) {
+  const isObj = typeof submissionOrId === 'object' && submissionOrId !== null;
+  const strId = isObj ? String(submissionOrId.id || '') : String(submissionOrId);
+  const sid = isObj ? String(submissionOrId.session_id || submissionOrId.sessionId || '1') : '1';
+  const studentName = isObj ? (submissionOrId.student_name || submissionOrId.studentName || '') : '';
+  const locationId = isObj ? (submissionOrId.location_id || submissionOrId.locationId || '') : '';
+
   const ns = getUserNamespace(user);
 
   // 1. Add to deleted IDs in localStorage (permanent tombstone)
   try {
     const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
-    if (!deletedList.includes(strId)) {
+    if (strId && !deletedList.includes(strId)) {
       deletedList.push(strId);
       localStorage.setItem(`geo_deleted_submission_ids_${ns}`, JSON.stringify(deletedList));
     }
@@ -440,34 +503,47 @@ export async function deleteSubmission(id, user = null) {
   // 2. Delete from localStorage geo_quiz_submissions
   try {
     const local = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
-    const filtered = local.filter(item => String(item.id) !== strId);
+    const filtered = local.filter(item => {
+      if (strId && String(item.id) === strId) return false;
+      if (studentName && locationId && item.student_name === studentName && item.location_id === locationId) return false;
+      return true;
+    });
     localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filtered));
     localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
   } catch (e) {}
 
-  // 3. Delete from Supabase if not a purely local ID
-  if (!strId.startsWith('local_')) {
-    try {
-      const { data, error } = await supabase
+  // 3. Instantly broadcast deletion to all connected student devices
+  broadcastDeletion({
+    sessionId: sid,
+    studentName,
+    locationId,
+    id: strId
+  });
+
+  // 4. Delete from Supabase
+  try {
+    if (strId && !strId.startsWith('local_')) {
+      await supabase
         .from('quiz_submissions')
         .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.warn('Supabase 삭제 알림:', error.message);
-      }
-      return { success: true, data };
-    } catch (err) {
-      console.error('Supabase 삭제 오류:', err);
-      return { success: true };
+        .eq('id', strId);
     }
+    if (studentName && locationId) {
+      await supabase
+        .from('quiz_submissions')
+        .delete()
+        .eq('student_name', studentName)
+        .eq('location_id', locationId);
+    }
+  } catch (err) {
+    console.error('Supabase 삭제 오류:', err);
   }
 
   return { success: true };
 }
 
 /**
- * Reset all submissions for a specific session
+ * Reset all submissions for a specific session with realtime broadcast to students
  */
 export async function resetSessionSubmissions(sessionId, currentSubmissions = [], user = null) {
   const sid = String(sessionId || '1');
@@ -512,7 +588,10 @@ export async function resetSessionSubmissions(sessionId, currentSubmissions = []
     }
   } catch (e) {}
 
-  // 5. Attempt Supabase delete for this session
+  // 5. Instantly broadcast session reset to all connected student devices
+  broadcastReset({ sessionId: sid });
+
+  // 6. Attempt Supabase delete for this session
   try {
     await supabase
       .from('quiz_submissions')

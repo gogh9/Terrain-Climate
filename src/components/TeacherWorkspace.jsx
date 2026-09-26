@@ -1645,8 +1645,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                             if (!window.confirm(`'${studentName}' 학생의 전체 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
                             sound.playClick();
                             for (const s of subList) {
-                              await deleteSubmission(s.id);
+                              await deleteSubmission(s, user);
                             }
+                            setSubmissions(prev => prev.filter(item => item.student_name !== studentName));
                             loadSubmissions();
                           }}
                           style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
@@ -1771,7 +1772,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                   onClick={async () => {
                     if (!window.confirm(`'${selectedSubmission.student_name}' 학생의 이 제출 기록을 삭제하시겠습니까?`)) return;
                     sound.playClick();
-                    await deleteSubmission(selectedSubmission.id);
+                    await deleteSubmission(selectedSubmission, user);
+                    setSubmissions(prev => prev.filter(item => item.id !== selectedSubmission.id));
                     setSelectedSubmission(null);
                     loadSubmissions();
                   }}

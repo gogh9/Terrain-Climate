@@ -11,7 +11,7 @@ import LandingScreen from './components/LandingScreen';
 import { LOCATION_DATA } from './data/textbookData';
 import { sound } from './utils/audio';
 import { supabase } from './supabase';
-import { signOutUser, getUserNamespace, getStudentShareUrl, subscribeSessionConfig, fetchSessionConfigRemote } from './utils/supabaseService';
+import { signOutUser, getUserNamespace, getStudentShareUrl, subscribeSessionConfig, fetchSessionConfigRemote, subscribeDeletions } from './utils/supabaseService';
 
 export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -295,6 +295,75 @@ export default function App() {
       console.warn('Session progress load error', e);
     }
   }, [effectiveSessionId]);
+
+  // Realtime subscription for deletions and session reset (reflects teacher deletion on student screen)
+  useEffect(() => {
+    const unsubscribe = subscribeDeletions(
+      (delInfo) => {
+        if (!delInfo) return;
+        const curSid = String(effectiveSessionId || '1');
+        const targetSid = String(delInfo.sessionId || '1');
+        if (targetSid !== curSid && !(targetSid === '1' && curSid === '1')) return;
+
+        const myFullName = studentUser?.fullName || '';
+        const myName = studentUser?.name || '';
+        const targetName = delInfo.studentName || '';
+
+        // Check if deleted item belongs to this student
+        const isMyStudent =
+          !targetName ||
+          myFullName === targetName ||
+          myName === targetName ||
+          (myFullName && targetName && myFullName.includes(targetName)) ||
+          (myName && targetName && myName.includes(targetName));
+
+        if (isMyStudent && delInfo.locationId) {
+          const locId = delInfo.locationId;
+          setCompletedIds(prev => prev.filter(id => id !== locId));
+          setUserAnswers(prev => {
+            const next = { ...prev };
+            delete next[locId];
+            return next;
+          });
+          try {
+            const savedIds = JSON.parse(localStorage.getItem(`geo_completed_ids_${curSid}`) || '[]');
+            const updatedIds = savedIds.filter(id => id !== locId);
+            localStorage.setItem(`geo_completed_ids_${curSid}`, JSON.stringify(updatedIds));
+
+            const savedAns = JSON.parse(localStorage.getItem(`geo_user_answers_${curSid}`) || '{}');
+            delete savedAns[locId];
+            localStorage.setItem(`geo_user_answers_${curSid}`, JSON.stringify(savedAns));
+
+            if (curSid === '1') {
+              localStorage.setItem('geo_completed_ids', JSON.stringify(updatedIds));
+              localStorage.setItem('geo_user_answers', JSON.stringify(savedAns));
+            }
+          } catch (e) {}
+        }
+      },
+      (resetInfo) => {
+        if (!resetInfo) return;
+        const curSid = String(effectiveSessionId || '1');
+        const targetSid = String(resetInfo.sessionId || '1');
+        if (targetSid === curSid || (targetSid === '1' && curSid === '1')) {
+          setCompletedIds([]);
+          setUserAnswers({});
+          try {
+            localStorage.removeItem(`geo_completed_ids_${curSid}`);
+            localStorage.removeItem(`geo_user_answers_${curSid}`);
+            if (curSid === '1') {
+              localStorage.removeItem('geo_completed_ids');
+              localStorage.removeItem('geo_user_answers');
+            }
+          } catch (e) {}
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [effectiveSessionId, studentUser]);
 
   // Save progress to LocalStorage per session
   useEffect(() => {

@@ -51,12 +51,13 @@ export default function TeacherDashboardModal({ onClose, locations = [], user = 
   };
 
   // Handle Delete
-  const handleDelete = async (id, studentName) => {
+  const handleDelete = async (submission) => {
+    const studentName = submission?.student_name || '익명';
     if (!window.confirm(`'${studentName}' 학생의 이 제출 항목을 삭제하시겠습니까?`)) return;
     sound.playClick();
-    const result = await deleteSubmission(id, user);
+    const result = await deleteSubmission(submission, user);
     if (result.success) {
-      setSubmissions(prev => prev.filter(item => item.id !== id));
+      setSubmissions(prev => prev.filter(item => item.id !== submission.id));
     } else {
       alert('삭제 중 오류가 발생했습니다: ' + result.error);
     }
@@ -346,7 +347,7 @@ export default function TeacherDashboardModal({ onClose, locations = [], user = 
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                         <button
-                          onClick={() => handleDelete(sub.id, sub.student_name)}
+                          onClick={() => handleDelete(sub)}
                           style={{
                             background: 'none',
                             border: 'none',
