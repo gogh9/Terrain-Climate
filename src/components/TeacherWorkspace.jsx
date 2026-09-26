@@ -195,14 +195,14 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           // Persist restored sessions to current user storage immediately
           try {
             localStorage.setItem(`geo_map_sessions_${userNs}`, JSON.stringify(renumbered));
-          } catch (e) {}
+          } catch (e) { }
           return renumbered;
         }
       }
     } catch (e) {
       console.warn('Session load error', e);
     }
-    
+
     // Create initial 1st session if completely new
     const initialId = '1';
     const now = new Date();
@@ -225,7 +225,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     try {
       const savedActive = localStorage.getItem(`geo_active_session_id_${userNs}`) || localStorage.getItem('geo_active_session_id');
       if (savedActive) return String(savedActive);
-    } catch {}
+    } catch { }
     return initialSessionId ? String(initialSessionId) : (sessions[0]?.id ? String(sessions[0].id) : '1');
   });
 
@@ -252,7 +252,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     if (activeSessionId) {
       try {
         localStorage.setItem(`geo_active_session_id_${userNs}`, String(activeSessionId));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [activeSessionId, userNs]);
 
@@ -263,7 +263,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       if (window.location.search) {
         window.history.replaceState(null, '', window.location.pathname);
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   // Save sessions to LocalStorage per user account and sync to active channels
@@ -582,8 +582,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         const rawStudentName = student.rawName || `${student.classNum ? student.classNum + '반 ' : ''}${student.studentNum ? student.studentNum + '번 ' : ''}${student.name}`;
 
         Object.entries(student.answers || {}).forEach(([locTitle, answerData], aIdx) => {
-          const matchedLoc = locations.find(l => 
-            normalizeTitle(l.name) === locTitle || 
+          const matchedLoc = locations.find(l =>
+            normalizeTitle(l.name) === locTitle ||
             l.name === locTitle ||
             (l.subType && l.subType.includes(locTitle))
           );
@@ -754,7 +754,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     if (!window.confirm('이 지도를 삭제하시겠습니까?')) return;
     sound.playClick();
     const strId = String(sessionId);
-    
+
     setSessions(prev => {
       const remaining = prev.filter(s => String(s.id) !== strId);
       const renumbered = renumberSessions(remaining);
@@ -920,9 +920,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const getLocationInfo = (sub) => {
     const rawTitle = sub.location_title || sub.answer_name || '';
     const normTitle = normalizeTitle(rawTitle);
-    const found = locations.find(l => 
-      l.id === sub.location_id || 
-      l.name === rawTitle || 
+    const found = locations.find(l =>
+      l.id === sub.location_id ||
+      l.name === rawTitle ||
       l.name === normTitle ||
       (l.name && normalizeTitle(l.name) === normTitle)
     );
@@ -997,10 +997,44 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           우리반 세계지도(지형, 기후)
         </h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '0.88rem', color: '#b3b3b3' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontSize: '0.88rem', color: '#b3b3b3', marginRight: '4px' }}>
             {user?.email || '교사'}
           </span>
+
+          <button
+            onClick={() => {
+              sound.playClick();
+              setShowSuperAdminModal(true);
+            }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              color: '#fbbf24',
+              padding: '0.55rem 1.1rem',
+              borderRadius: '9999px',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 2px 10px rgba(245, 158, 11, 0.15)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.03)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%)';
+            }}
+            title="Supabase 클라우드 전체 데이터 관리, 백업 및 초기화"
+          >
+            <Shield size={15} />
+            <span>최고 관리자</span>
+          </button>
 
           <button
             onClick={onLogout}
@@ -2041,6 +2075,17 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
           </div>
         </div>
+      )}
+
+      {/* Super Admin Modal */}
+      {showSuperAdminModal && (
+        <SuperAdminModal
+          user={user}
+          onClose={() => {
+            setShowSuperAdminModal(false);
+            loadSubmissions();
+          }}
+        />
       )}
 
     </div>

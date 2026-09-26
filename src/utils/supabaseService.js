@@ -817,5 +817,189 @@ export async function fetchSessionConfigRemote(sessionId) {
   return null;
 }
 
+/**
+ * ============================================================================
+ * SUPER ADMIN (최고 관리자) MANAGEMENT FUNCTIONS
+ * ============================================================================
+ */
+
+/**
+ * Fetch all raw submissions and meta from Supabase for Super Admin
+ */
+export async function fetchSuperAdminSubmissions() {
+  try {
+    const { data, error, count } = await supabase
+      .from('quiz_submissions')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      console.error('Super admin fetch error:', error);
+      return { success: false, error: error.message, data: [], count: 0 };
+    }
+
+    const rows = (data || []).map(row => {
+      const { sessionId, featureText } = decodeSessionFromFeature(row.answer_feature, row.session_id || '');
+      const isConfigRow = row.location_id === '__session_config__';
+      const isLegacyUnassigned = !row.session_id && !sessionId;
+      return {
+        ...row,
+        resolvedSessionId: String(row.session_id || sessionId || '(미지정)'),
+        resolvedFeature: featureText || row.answer_feature,
+        isConfigRow,
+        isLegacyUnassigned
+      };
+    });
+
+    return {
+      success: true,
+      data: rows,
+      count: count || rows.length
+    };
+  } catch (err) {
+    console.error('Super admin fetch exception:', err);
+    return { success: false, error: err.message, data: [], count: 0 };
+  }
+}
+
+/**
+ * Delete a specific list of submission IDs (Super Admin)
+ */
+export async function superAdminDeleteSubmissions(ids = []) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0 };
+
+  try {
+    const validIds = ids.filter(id => id && !String(id).startsWith('local_'));
+    const chunkSize = 40;
+    let deletedCount = 0;
+
+    for (let i = 0; i < validIds.length; i += chunkSize) {
+      const chunk = validIds.slice(i, i + chunkSize);
+      const { error } = await supabase
+        .from('quiz_submissions')
+        .delete()
+        .in('id', chunk);
+
+      if (error) {
+        console.error('Super admin delete batch error:', error);
+      } else {
+        deletedCount += chunk.length;
+      }
+    }
+
+    // Also remove from local storage tombstones
+    try {
+      const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+      validIds.forEach(id => {
+        if (!deletedList.includes(String(id))) deletedList.push(String(id));
+      });
+      localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+    } catch (e) {}
+
+    return { success: true, count: deletedCount };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Delete all submissions belonging to a specific session ID (Super Admin)
+ */
+export async function superAdminDeleteSession(sessionId) {
+  if (!sessionId) return { success: false, error: '세션 ID가 지정되지 않았습니다.' };
+  const sid = String(sessionId);
+
+  try {
+    // 1. Delete by session_id column
+    await supabase
+      .from('quiz_submissions')
+      .delete()
+      .eq('session_id', sid);
+
+    // 2. Delete by embedded session tag in answer_feature
+    await supabase
+      .from('quiz_submissions')
+      .delete()
+      .like('answer_feature', `%<!--SID:${sid}-->%`);
+
+    // Broadcast reset to connected students
+    broadcastReset({ sessionId: sid });
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Clean up legacy/unassigned submissions without a session ID (Super Admin)
+ */
+export async function superAdminCleanLegacySubmissions() {
+  try {
+    // 1. Fetch all rows
+    const { data, error } = await supabase
+      .from('quiz_submissions')
+      .select('id, session_id, answer_feature')
+      .limit(5000);
+
+    if (error || !data) return { success: false, error: error?.message || '조회 실패' };
+
+    const legacyIds = data
+      .filter(row => {
+        if (row.session_id) return false;
+        const hasSidTag = row.answer_feature && row.answer_feature.includes('<!--SID:');
+        return !hasSidTag;
+      })
+      .map(row => row.id)
+      .filter(Boolean);
+
+    if (legacyIds.length > 0) {
+      return await superAdminDeleteSubmissions(legacyIds);
+    }
+
+    return { success: true, count: 0 };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Full factory reset: Purge all submissions from quiz_submissions (Super Admin)
+ */
+export async function superAdminPurgeAllSubmissions() {
+  try {
+    // Supabase requires a filter for delete
+    const { error } = await supabase
+      .from('quiz_submissions')
+      .delete()
+      .gte('created_at', '1970-01-01T00:00:00Z');
+
+    if (error) {
+      // Fallback delete
+      await supabase
+        .from('quiz_submissions')
+        .delete()
+        .neq('location_id', '__non_existent_loc__');
+    }
+
+    // Clear local storage submissions cache
+    try {
+      localStorage.removeItem('geo_quiz_submissions');
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('geo_quiz_submissions_') || key.startsWith('geo_deleted_submission_ids_'))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {}
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+
 
 
