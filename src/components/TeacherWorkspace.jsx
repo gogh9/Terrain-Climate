@@ -372,14 +372,19 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
     reader.onload = (evt) => {
       try {
-        const data = evt.target.result;
+        const buffer = evt.target.result;
         let workbook = null;
 
         try {
-          workbook = XLSX.read(data, { type: 'binary' });
-        } catch (err) {
-          console.warn('Binary read failed, trying string/array read', err);
-          workbook = XLSX.read(data, { type: 'string' });
+          const arr = new Uint8Array(buffer);
+          workbook = XLSX.read(arr, { type: 'array' });
+        } catch (err1) {
+          try {
+            const str = new TextDecoder('utf-8').decode(buffer);
+            workbook = XLSX.read(str, { type: 'string' });
+          } catch (err2) {
+            console.warn('String read fallback failed', err2);
+          }
         }
 
         if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -565,7 +570,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       }
     };
 
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   // Execute Import & Restore Data
@@ -1680,6 +1685,15 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         padding: '1.5rem 2rem'
       }}
     >
+      {/* Hidden File Input for Excel Upload & Restore */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".xlsx, .xls, .csv"
+        style={{ display: 'none' }}
+      />
+
       {/* Top Header Bar */}
       <header
         style={{
@@ -1688,14 +1702,16 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           alignItems: 'center',
           marginBottom: '2rem',
           paddingBottom: '1rem',
-          borderBottom: '1px solid #282828'
+          borderBottom: '1px solid #282828',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}
       >
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em', margin: 0 }}>
           우리반 세계지도(지형, 기후)
         </h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.88rem', color: '#b3b3b3', marginRight: '4px' }}>
             {user?.email || '교사'}
           </span>
@@ -1754,6 +1770,43 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
             onMouseLeave={(e) => { e.currentTarget.style.color = '#b3b3b3'; e.currentTarget.style.borderColor = '#7c7c7c'; }}
           >
             <LogOut size={16} />
+          </button>
+
+          {/* Excel File Upload / Restore Button */}
+          <button
+            onClick={() => {
+              sound.playClick();
+              fileInputRef.current?.click();
+            }}
+            style={{
+              background: '#1f1f1f',
+              color: '#38bdf8',
+              border: '1px solid rgba(56, 189, 248, 0.45)',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '9999px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 2px 10px rgba(56, 189, 248, 0.15)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.03)';
+              e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)';
+              e.currentTarget.style.borderColor = '#38bdf8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = '#1f1f1f';
+              e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.45)';
+            }}
+            title="저장해둔 엑셀(.xlsx, .xls, .csv) 파일을 업로드하여 데이터를 복원합니다"
+          >
+            <Upload size={16} />
+            <span>엑셀 업로드(복원)</span>
           </button>
 
           <button
@@ -1937,8 +1990,43 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
             </div>
           </div>
 
-          {/* Controls: Excel Download & Refresh */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Controls: Excel Upload, Download & Refresh */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                sound.playClick();
+                fileInputRef.current?.click();
+              }}
+              style={{
+                background: '#1f1f1f',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                color: '#38bdf8',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)';
+                e.currentTarget.style.borderColor = '#38bdf8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.background = '#1f1f1f';
+                e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.45)';
+              }}
+              title="엑셀 파일을 불러와 새로운 지도로 복원하거나 현재 지도에 병합합니다"
+            >
+              <Upload size={13} />
+              <span>엑셀 업로드(복원)</span>
+            </button>
+
             <button
               onClick={() => handleExportExcel(activeSession)}
               style={{
