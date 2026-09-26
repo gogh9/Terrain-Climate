@@ -200,7 +200,7 @@ export const LOCATION_DATA = [
   },
   {
     id: 'landform_algeria_desert',
-    name: '알제리 (○○)',
+    name: '알제리(사하라○○)',
     category: 'landform',
     categoryName: '지형',
     mainType: '사막',
