@@ -657,7 +657,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     }
   };
 
-  // Create New Map Session (새 지도는 오른쪽에 추가하며 고유 세션 ID 부여)
+  // Create New Map Session (새 지도는 오른쪽에 추가하며 고유 세션 ID 부여, 절대 보존 세션으로 생성되지 않음)
   const handleCreateNewMap = () => {
     sound.playClick();
     const newId = generateSessionId(user);
@@ -672,10 +672,12 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       isOpen: true,
       allowExplore: true,
       accessCount: 0,
-      createdAt: now.toISOString()
+      createdAt: now.toISOString(),
+      isProtected: false, // 새로 추가한 세션은 절대 보존 세션이 아님 (자유롭게 삭제/초기화 가능)
+      timeGroupKey: null
     };
 
-    setSessions(prev => renumberSessions([...prev, newSession]));
+    setSessions(prev => renumberSessions([...prev.filter(s => !s.timeGroupKey), newSession]));
     setActiveSessionId(newId);
   };
 
@@ -838,9 +840,24 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
   // Merge user custom sessions with discovered protected time group sessions
   const mergedSessions = useMemo(() => {
-    // 1. Cluster submissions by time group
+    // 1. All active custom teacher sessions (from state / localStorage)
+    // Newly created sessions or custom sessions are guaranteed NOT protected
+    const customSessions = sessions
+      .filter(s => !s.timeGroupKey)
+      .map(s => ({ ...s, isProtected: false }));
+
+    const customSessionIds = new Set(customSessions.map(s => String(s.id)));
+
+    // 2. Cluster submissions by time group ONLY for historical submissions NOT belonging to active teacher sessions
     const timeGroupMap = {};
     submissions.forEach(sub => {
+      if (!sub) return;
+      const sid = String(sub.session_id || '');
+      // If submission belongs to an active teacher session, do not wrap it into historical protected timeSessions
+      if (sid && customSessionIds.has(sid)) {
+        return;
+      }
+
       const tKey = getTimeGroupKey(sub.created_at);
       if (tKey !== '미분류 시간대') {
         if (!timeGroupMap[tKey]) {
@@ -859,7 +876,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       .filter(g => g.submissions.length > 0)
       .sort((a, b) => new Date(a.rawDate) - new Date(b.rawDate));
 
-    // Create protected session objects for each time group (접근 가능, 삭제 불가)
+    // Create protected session objects for each historical time group (과거 보존 세션)
     const timeSessions = sortedGroups.map((g, idx) => {
       const d = new Date(g.rawDate);
       const dateStr = !isNaN(d.getTime()) ? `${d.getMonth() + 1}. ${d.getDate()}.` : '';
@@ -876,18 +893,16 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         allowExplore: true,
         accessCount: g.submissions.length,
         createdAt: g.rawDate,
-        isProtected: true, // "삭제는 안 되고 접근만 되도록"
+        isProtected: true, // 과거 수업 기록 보존 세션
         timeGroupKey: g.key
       };
     });
-
-    // Custom teacher-created sessions (from localStorage)
-    const customSessions = sessions.filter(s => !s.isProtected && !s.timeGroupKey);
 
     if (customSessions.length === 0 && timeSessions.length > 0) {
       return timeSessions;
     }
 
+    // Historical preserved sessions first, followed by teacher's custom active sessions
     return [...timeSessions, ...customSessions];
   }, [submissions, sessions]);
 
