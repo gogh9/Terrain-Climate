@@ -680,7 +680,7 @@ export default function QuizModal({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                          1단계: 지형의 큰 종류(대분류)를 선택하세요
+                          왼쪽의 사진에서 확인할 수 있는 지형은 무엇입니까?
                         </label>
                         {selectedMainType && (
                           <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
@@ -755,7 +755,7 @@ export default function QuizModal({
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span>👉 2단계: '{selectedMainType}'의 세부 지형(하부 요소)을 선택하세요:</span>
+                            <span>👉 다음에서 왼쪽 사진의 지형으로 알맞은 것을 고르시오.</span>
                           </label>
                           {selectedSubType && (
                             <span style={{ fontSize: '0.78rem', background: '#1ed760', color: '#000000', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
