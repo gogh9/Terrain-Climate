@@ -139,14 +139,23 @@ export const getColumnsForSession = (session) => {
   return [...LANDFORM_ORDER, ...CLIMATE_ORDER];
 };
 
-// 세션별 제출 데이터 추출 헬퍼 (회차별 100% 엄격 격리)
+// 세션별 제출 데이터 추출 헬퍼 (회차별 100% 엄격 격리 및 시간대 보존 세션 지원)
 export const getSubmissionsForSession = (session, allSubmissions = []) => {
   if (!session || !session.id) return [];
   const targetId = String(session.id);
 
+  if (session.timeGroupKey) {
+    return allSubmissions.filter(sub => {
+      if (!sub) return false;
+      if (String(sub.session_id) === targetId) return true;
+      return getTimeGroupKey(sub.created_at) === session.timeGroupKey;
+    });
+  }
+
   return allSubmissions.filter(sub => {
-    if (!sub || !sub.session_id) return false;
-    return String(sub.session_id) === targetId;
+    if (!sub) return false;
+    if (sub.session_id && String(sub.session_id) === targetId) return true;
+    return false;
   });
 };
 
@@ -319,14 +328,10 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     sessionIdsRef.current = sessions.map(s => String(s.id));
   }, [sessions]);
 
-  // Fetch Submissions strictly for current user sessions
+  // Fetch Submissions across all sessions and time groups
   const loadSubmissions = async () => {
-    const currentIds = sessionIdsRef.current;
-    if (!currentIds || currentIds.length === 0) return;
-    const allowed = Array.from(new Set(currentIds));
     const res = await fetchAllSubmissions({
-      limit: 1000,
-      allowedSessionIds: allowed,
+      limit: 5000,
       user
     });
     if (res.success) {
@@ -787,10 +792,65 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     });
   };
 
+  // Merge user custom sessions with discovered protected time group sessions
+  const mergedSessions = useMemo(() => {
+    // 1. Cluster submissions by time group
+    const timeGroupMap = {};
+    submissions.forEach(sub => {
+      const tKey = getTimeGroupKey(sub.created_at);
+      if (tKey !== '미분류 시간대') {
+        if (!timeGroupMap[tKey]) {
+          timeGroupMap[tKey] = {
+            key: tKey,
+            rawDate: sub.created_at || '1970-01-01',
+            submissions: []
+          };
+        }
+        timeGroupMap[tKey].submissions.push(sub);
+      }
+    });
+
+    // Sort time groups chronologically
+    const sortedGroups = Object.values(timeGroupMap)
+      .filter(g => g.submissions.length > 0)
+      .sort((a, b) => new Date(a.rawDate) - new Date(b.rawDate));
+
+    // Create protected session objects for each time group (접근 가능, 삭제 불가)
+    const timeSessions = sortedGroups.map((g, idx) => {
+      const d = new Date(g.rawDate);
+      const dateStr = !isNaN(d.getTime()) ? `${d.getMonth() + 1}. ${d.getDate()}.` : '';
+      const hourStr = !isNaN(d.getTime()) ? `${d.getHours()}시` : '';
+
+      const isClimate = g.submissions.some(s => (s.location_id || '').includes('climate') || (s.location_title || '').includes('기후'));
+
+      return {
+        id: `time_session_${idx + 1}`,
+        title: `${idx + 1}회 (${dateStr} ${hourStr} 수업)`,
+        categoryFilter: isClimate ? 'climate' : 'landform',
+        continents: [...ALL_CONTINENTS],
+        isOpen: true,
+        allowExplore: true,
+        accessCount: g.submissions.length,
+        createdAt: g.rawDate,
+        isProtected: true, // "삭제는 안 되고 접근만 되도록"
+        timeGroupKey: g.key
+      };
+    });
+
+    // Custom teacher-created sessions (from localStorage)
+    const customSessions = sessions.filter(s => !s.isProtected && !s.timeGroupKey);
+
+    if (customSessions.length === 0 && timeSessions.length > 0) {
+      return timeSessions;
+    }
+
+    return [...timeSessions, ...customSessions];
+  }, [submissions, sessions]);
+
   // Active Session helper
   const activeSession = useMemo(() => {
-    return sessions.find(s => String(s.id) === String(activeSessionId)) || sessions[0];
-  }, [sessions, activeSessionId]);
+    return mergedSessions.find(s => String(s.id) === String(activeSessionId)) || mergedSessions[0] || sessions[0];
+  }, [mergedSessions, sessions, activeSessionId]);
 
   // Submissions filtered strictly for the Active Session & Category
   const sessionSubmissions = useMemo(() => {
@@ -1310,7 +1370,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           marginBottom: '2rem'
         }}
       >
-        {sessions.map(session => {
+        {mergedSessions.map(session => {
           const isSelected = String(activeSessionId) === String(session.id);
           const isClimate = session.categoryFilter === 'climate';
           const isLandform = session.categoryFilter === 'landform';
@@ -1367,53 +1427,72 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                   </div>
                 </div>
 
-                {/* Card Top Right: Reset and Delete Buttons */}
+                {/* Card Top Right: Reset and Delete Buttons (Protected for Time Group Sessions) */}
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
-                    style={{
-                      background: '#1f1f1f',
-                      color: '#ffa42b',
-                      border: '1px solid #404040',
+                  {session.isProtected ? (
+                    <span style={{
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
                       padding: '4px 10px',
                       borderRadius: '9999px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '3px',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#282828'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
-                    title="이 회차 학생 제출 기록 초기화"
-                  >
-                    <RotateCcw size={12} /> 초기화
-                  </button>
+                      gap: '4px'
+                    }}>
+                      <Shield size={11} /> 보존 세션 (삭제 불가)
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
+                        style={{
+                          background: '#1f1f1f',
+                          color: '#ffa42b',
+                          border: '1px solid #404040',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ffa42b'; e.currentTarget.style.background = '#282828'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                        title="이 회차 학생 제출 기록 초기화"
+                      >
+                        <RotateCcw size={12} /> 초기화
+                      </button>
 
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                    style={{
-                      background: '#1f1f1f',
-                      color: '#f3727f',
-                      border: '1px solid #404040',
-                      padding: '4px 10px',
-                      borderRadius: '9999px',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#282828'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
-                    title="이 회차 지도 삭제"
-                  >
-                    <Trash2 size={12} /> 삭제
-                  </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                        style={{
+                          background: '#1f1f1f',
+                          color: '#f3727f',
+                          border: '1px solid #404040',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#f3727f'; e.currentTarget.style.background = '#282828'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#404040'; e.currentTarget.style.background = '#1f1f1f'; }}
+                        title="이 회차 지도 삭제"
+                      >
+                        <Trash2 size={12} /> 삭제
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
