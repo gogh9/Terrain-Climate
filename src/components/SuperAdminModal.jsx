@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import { 
   fetchSuperAdminSubmissions, 
   superAdminDeleteSubmissions, 
+  superAdminDeleteTimeGroup,
   superAdminDeleteSession, 
   superAdminCleanLegacySubmissions, 
   superAdminPurgeAllSubmissions 
@@ -197,7 +198,8 @@ export default function SuperAdminModal({ onClose, user }) {
     
     sound.playClick();
     setLoading(true);
-    const result = await superAdminDeleteSubmissions(Array.from(selectedIds));
+    const selectedSubmissions = submissions.filter(s => selectedIds.has(s.id));
+    const result = await superAdminDeleteSubmissions(Array.from(selectedIds), selectedSubmissions);
     if (result.success) {
       alert(`성공적으로 ${result.count}건의 데이터가 삭제되었습니다.`);
       setSelectedIds(new Set());
@@ -791,8 +793,15 @@ export default function SuperAdminModal({ onClose, user }) {
                                   <button
                                     onClick={async () => {
                                       if (!window.confirm(`'${sub.student_name || '익명'}' 학생의 이 답안을 삭제하시겠습니까?`)) return;
-                                      await superAdminDeleteSubmissions([sub.id]);
-                                      await loadData();
+                                      sound.playClick();
+                                      setLoading(true);
+                                      const res = await superAdminDeleteSubmissions([sub.id], [sub]);
+                                      if (res.success) {
+                                        await loadData();
+                                      } else {
+                                        alert('삭제 실패: ' + res.error);
+                                      }
+                                      setLoading(false);
                                     }}
                                     title="삭제"
                                     style={{
@@ -989,13 +998,15 @@ export default function SuperAdminModal({ onClose, user }) {
                         if (!window.confirm(`[${group.key}] 시간대에 등록된 ${group.count}건의 모든 데이터를 Supabase에서 삭제하시겠습니까?`)) return;
                         sound.playClick();
                         setLoading(true);
-                        const res = await superAdminDeleteSubmissions(group.submissionIds);
+                        // Optimistically remove from state for instant responsiveness
+                        setSubmissions(prev => prev.filter(sub => !group.submissionIds.includes(sub.id) && !group.submissions.some(gs => gs.id === sub.id)));
+                        const res = await superAdminDeleteTimeGroup(group);
                         if (res.success) {
-                          alert(`[${group.key}] 시간대 데이터 ${res.count}건이 삭제되었습니다.`);
-                          await loadData();
+                          alert(`[${group.key}] 시간대 데이터 ${group.count}건이 Supabase에서 삭제되었습니다.`);
                         } else {
-                          alert('삭제 실패: ' + res.error);
+                          alert('삭제 실패: ' + (res.error || '알 수 없는 오류'));
                         }
+                        await loadData();
                         setLoading(false);
                       }}
                       style={{

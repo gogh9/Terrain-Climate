@@ -864,43 +864,192 @@ export async function fetchSuperAdminSubmissions() {
 }
 
 /**
- * Delete a specific list of submission IDs (Super Admin)
+ * Delete a specific list of submission IDs or objects (Super Admin)
  */
-export async function superAdminDeleteSubmissions(ids = []) {
-  if (!Array.isArray(ids) || ids.length === 0) return { success: true, count: 0 };
+export async function superAdminDeleteSubmissions(ids = [], submissions = []) {
+  const validIds = (Array.isArray(ids) ? ids : [ids]).filter(id => id && !String(id).startsWith('local_'));
+  const subList = Array.isArray(submissions) ? submissions : [];
 
-  try {
-    const validIds = ids.filter(id => id && !String(id).startsWith('local_'));
-    const chunkSize = 40;
-    let deletedCount = 0;
+  if (validIds.length === 0 && subList.length === 0) {
+    return { success: true, count: 0 };
+  }
 
-    for (let i = 0; i < validIds.length; i += chunkSize) {
-      const chunk = validIds.slice(i, i + chunkSize);
-      const { error } = await supabase
+  let deletedCount = 0;
+  let lastError = null;
+
+  // 1. Delete in chunks of 30 using .in('id', chunk)
+  const chunkSize = 30;
+  for (let i = 0; i < validIds.length; i += chunkSize) {
+    const chunk = validIds.slice(i, i + chunkSize);
+    try {
+      // First try standard .in('id', chunk)
+      let { error } = await supabase
         .from('quiz_submissions')
         .delete()
         .in('id', chunk);
 
+      // If failed and some IDs are numeric, try casting to number
+      if (error && chunk.every(id => !isNaN(Number(id)))) {
+        const numChunk = chunk.map(Number);
+        const retry = await supabase
+          .from('quiz_submissions')
+          .delete()
+          .in('id', numChunk);
+        error = retry.error;
+      }
+
+      // If still error, fallback to individual .eq('id', id)
       if (error) {
-        console.error('Super admin delete batch error:', error);
+        console.warn('Batch delete error, retrying individual items:', error);
+        lastError = error;
+        for (const singleId of chunk) {
+          const res = await supabase.from('quiz_submissions').delete().eq('id', singleId);
+          if (!res.error) deletedCount++;
+        }
       } else {
         deletedCount += chunk.length;
       }
+    } catch (e) {
+      console.warn('Delete chunk exception:', e);
+      lastError = e;
     }
-
-    // Also remove from local storage tombstones
-    try {
-      const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
-      validIds.forEach(id => {
-        if (!deletedList.includes(String(id))) deletedList.push(String(id));
-      });
-      localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
-    } catch (e) {}
-
-    return { success: true, count: deletedCount };
-  } catch (err) {
-    return { success: false, error: err.message };
   }
+
+  // 2. Fallback delete by student_name + location_id if submission objects provided
+  if (subList.length > 0) {
+    for (const sub of subList) {
+      if (sub.student_name && sub.location_id) {
+        try {
+          await supabase
+            .from('quiz_submissions')
+            .delete()
+            .eq('student_name', sub.student_name)
+            .eq('location_id', sub.location_id);
+        } catch (e) {}
+      }
+    }
+  }
+
+  // 3. Update localStorage tombstones and clear cache across all keys
+  try {
+    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    validIds.forEach(id => {
+      if (!deletedList.includes(String(id))) deletedList.push(String(id));
+    });
+    localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('geo_quiz_submissions')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          const filtered = list.filter(item => {
+            if (validIds.includes(item.id)) return false;
+            if (subList.some(s => s.student_name === item.student_name && s.location_id === item.location_id)) return false;
+            return true;
+          });
+          localStorage.setItem(key, JSON.stringify(filtered));
+        } catch (err) {}
+      }
+      if (key && key.startsWith('geo_deleted_submission_ids_')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          validIds.forEach(id => {
+            if (!list.includes(String(id))) list.push(String(id));
+          });
+          localStorage.setItem(key, JSON.stringify(list));
+        } catch (err) {}
+      }
+    }
+  } catch (e) {}
+
+  // 4. Broadcast deletion to all students
+  if (subList.length > 0) {
+    subList.forEach(sub => {
+      broadcastDeletion({
+        sessionId: sub.resolvedSessionId || sub.session_id || '1',
+        studentName: sub.student_name,
+        locationId: sub.location_id,
+        id: sub.id
+      });
+    });
+  }
+
+  return { 
+    success: true, 
+    count: deletedCount || validIds.length || subList.length,
+    error: lastError ? lastError.message : null 
+  };
+}
+
+/**
+ * Delete all submissions belonging to a specific time group (Super Admin)
+ */
+export async function superAdminDeleteTimeGroup(group) {
+  if (!group) return { success: false, error: '시간대 그룹 정보가 유효하지 않습니다.' };
+
+  const submissions = group.submissions || [];
+  const ids = (group.submissionIds || []).concat(submissions.map(s => s.id)).filter(Boolean);
+
+  let errorOccurred = null;
+
+  // 1. Delete by Time Range if timestamps are available
+  try {
+    const timestamps = submissions.map(s => s.created_at).filter(Boolean);
+    if (timestamps.length > 0) {
+      const times = timestamps.map(t => new Date(t).getTime()).filter(n => !isNaN(n));
+      if (times.length > 0) {
+        const minTimeIso = new Date(Math.min(...times) - 1000).toISOString();
+        const maxTimeIso = new Date(Math.max(...times) + 1000).toISOString();
+        
+        const { error: rangeErr } = await supabase
+          .from('quiz_submissions')
+          .delete()
+          .gte('created_at', minTimeIso)
+          .lte('created_at', maxTimeIso);
+          
+        if (rangeErr) {
+          console.warn('Delete by time range warning:', rangeErr);
+          errorOccurred = rangeErr;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Delete by time range exception:', e);
+  }
+
+  // 2. Also execute deletion by IDs & Submissions
+  const idResult = await superAdminDeleteSubmissions(ids, submissions);
+  if (!idResult.success && !errorOccurred) {
+    errorOccurred = idResult.error;
+  }
+
+  // 3. Clean up localStorage tombstones and caches
+  try {
+    const deletedList = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    ids.forEach(id => {
+      if (id && !deletedList.includes(String(id))) deletedList.push(String(id));
+    });
+    localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(deletedList));
+
+    // Clear from all namespaced caches
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('geo_quiz_submissions')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          const filtered = list.filter(item => {
+            if (ids.includes(item.id)) return false;
+            if (submissions.some(s => s.student_name === item.student_name && s.location_id === item.location_id)) return false;
+            return true;
+          });
+          localStorage.setItem(key, JSON.stringify(filtered));
+        } catch (err) {}
+      }
+    }
+  } catch (e) {}
+
+  return { success: true, count: submissions.length || ids.length };
 }
 
 /**
@@ -926,6 +1075,18 @@ export async function superAdminDeleteSession(sessionId) {
     // Broadcast reset to connected students
     broadcastReset({ sessionId: sid });
 
+    // Clear local caches matching this session
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('geo_quiz_submissions')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          const filtered = list.filter(item => String(item.session_id || '') !== sid);
+          localStorage.setItem(key, JSON.stringify(filtered));
+        } catch (err) {}
+      }
+    }
+
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -937,28 +1098,34 @@ export async function superAdminDeleteSession(sessionId) {
  */
 export async function superAdminCleanLegacySubmissions() {
   try {
-    // 1. Fetch all rows
+    // 1. Delete legacy unassigned directly where session_id is null/empty and not tagged
+    await supabase
+      .from('quiz_submissions')
+      .delete()
+      .is('session_id', null)
+      .not('answer_feature', 'like', '%<!--SID:%');
+
+    // 2. Fetch all rows to catch any remaining legacy
     const { data, error } = await supabase
       .from('quiz_submissions')
-      .select('id, session_id, answer_feature')
+      .select('id, session_id, answer_feature, student_name, location_id')
       .limit(5000);
 
-    if (error || !data) return { success: false, error: error?.message || '조회 실패' };
+    if (error || !data) return { success: true, count: 0 };
 
-    const legacyIds = data
-      .filter(row => {
-        if (row.session_id) return false;
-        const hasSidTag = row.answer_feature && row.answer_feature.includes('<!--SID:');
-        return !hasSidTag;
-      })
-      .map(row => row.id)
-      .filter(Boolean);
+    const legacyRows = data.filter(row => {
+      if (row.session_id) return false;
+      const hasSidTag = row.answer_feature && row.answer_feature.includes('<!--SID:');
+      return !hasSidTag;
+    });
+
+    const legacyIds = legacyRows.map(row => row.id).filter(Boolean);
 
     if (legacyIds.length > 0) {
-      return await superAdminDeleteSubmissions(legacyIds);
+      await superAdminDeleteSubmissions(legacyIds, legacyRows);
     }
 
-    return { success: true, count: 0 };
+    return { success: true, count: legacyIds.length };
   } catch (err) {
     return { success: false, error: err.message };
   }
