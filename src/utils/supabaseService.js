@@ -594,74 +594,104 @@ export async function fetchRecentSubmissions({ limit = 10, allowedSessionIds = n
 }
 
 /**
- * Delete a submission by ID or submission object with realtime broadcast to students
+ * Delete multiple submissions in batch with instant local update, cloud tombstones, and Supabase deletion
  */
-export async function deleteSubmission(submissionOrId, user = null) {
-  const isObj = typeof submissionOrId === 'object' && submissionOrId !== null;
-  const strId = isObj ? String(submissionOrId.id || '') : String(submissionOrId);
-  const sid = isObj ? String(submissionOrId.session_id || submissionOrId.sessionId || '1') : '1';
-  const studentName = isObj ? (submissionOrId.student_name || submissionOrId.studentName || '') : '';
-  const locationId = isObj ? (submissionOrId.location_id || submissionOrId.locationId || '') : '';
+export async function deleteSubmissions(submissionsList = [], user = null) {
+  const list = (Array.isArray(submissionsList) ? submissionsList : [submissionsList]).filter(Boolean);
+  if (list.length === 0) return { success: true, count: 0 };
 
   const ns = getUserNamespace(user);
+  const ids = list.map(s => typeof s === 'object' && s !== null ? String(s.id || '') : String(s)).filter(Boolean);
+  const remoteIds = ids.filter(id => !id.startsWith('local_'));
 
   // 1. Add to deleted IDs in localStorage (permanent tombstone)
   try {
-    const deletedList = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || localStorage.getItem('geo_deleted_submission_ids') || '[]');
-    if (strId && !deletedList.includes(strId)) {
-      deletedList.push(strId);
-      localStorage.setItem(`geo_deleted_submission_ids_${ns}`, JSON.stringify(deletedList));
-    }
+    const deletedListNs = JSON.parse(localStorage.getItem(`geo_deleted_submission_ids_${ns}`) || '[]');
+    const deletedListGen = JSON.parse(localStorage.getItem('geo_deleted_submission_ids') || '[]');
+    const mergedDeleted = Array.from(new Set([...deletedListNs, ...deletedListGen, ...ids]));
+    localStorage.setItem(`geo_deleted_submission_ids_${ns}`, JSON.stringify(mergedDeleted));
+    localStorage.setItem('geo_deleted_submission_ids', JSON.stringify(mergedDeleted));
   } catch (e) {}
 
   // 2. Delete from localStorage geo_quiz_submissions
   try {
-    const local = JSON.parse(localStorage.getItem(`geo_quiz_submissions_${ns}`) || localStorage.getItem('geo_quiz_submissions') || '[]');
-    const filtered = local.filter(item => {
-      if (strId && String(item.id) === strId) return false;
-      if (studentName && locationId && item.student_name === studentName && item.location_id === locationId) return false;
-      return true;
-    });
-    localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filtered));
-    localStorage.setItem('geo_quiz_submissions', JSON.stringify(filtered));
+    const idSet = new Set(ids);
+    const filterLocal = (raw) => {
+      const parsed = JSON.parse(raw || '[]');
+      return parsed.filter(item => {
+        if (item.id && idSet.has(String(item.id))) return false;
+        if (list.some(s => s.student_name && s.location_id && item.student_name === s.student_name && item.location_id === s.location_id)) return false;
+        return true;
+      });
+    };
+    localStorage.setItem(`geo_quiz_submissions_${ns}`, JSON.stringify(filterLocal(localStorage.getItem(`geo_quiz_submissions_${ns}`))));
+    localStorage.setItem('geo_quiz_submissions', JSON.stringify(filterLocal(localStorage.getItem('geo_quiz_submissions'))));
   } catch (e) {}
 
-  // 3. Instantly broadcast deletion to all connected student devices
-  broadcastDeletion({
-    sessionId: sid,
-    studentName,
-    locationId,
-    id: strId
-  });
+  // 3. Broadcast deletion to all connected student devices
+  for (const s of list) {
+    if (typeof s === 'object' && s !== null) {
+      broadcastDeletion({
+        sessionId: String(s.session_id || s.sessionId || '1'),
+        studentName: s.student_name || '',
+        locationId: s.location_id || '',
+        id: String(s.id || '')
+      });
+    }
+  }
 
   // 4. Write Cloud Tombstone to Supabase (prevents zombie resurrection)
-  if (strId) {
+  if (ids.length > 0) {
     await writeCloudTombstone({
-      type: 'single_id',
-      deletedIds: [strId]
+      type: 'batch_ids',
+      deletedIds: ids
     });
   }
 
-  // 5. Attempt direct delete from Supabase
-  try {
-    if (strId && !strId.startsWith('local_')) {
-      await supabase
-        .from('quiz_submissions')
-        .delete()
-        .eq('id', strId);
+  // 5. Direct delete from Supabase
+  if (remoteIds.length > 0) {
+    const chunkSize = 30;
+    for (let i = 0; i < remoteIds.length; i += chunkSize) {
+      const chunk = remoteIds.slice(i, i + chunkSize);
+      try {
+        let { error } = await supabase
+          .from('quiz_submissions')
+          .delete()
+          .in('id', chunk);
+
+        if (error && chunk.every(id => !isNaN(Number(id)))) {
+          await supabase
+            .from('quiz_submissions')
+            .delete()
+            .in('id', chunk.map(Number));
+        }
+      } catch (err) {
+        console.warn('Supabase bulk delete chunk error:', err);
+      }
     }
-    if (studentName && locationId) {
-      await supabase
-        .from('quiz_submissions')
-        .delete()
-        .eq('student_name', studentName)
-        .eq('location_id', locationId);
-    }
-  } catch (err) {
-    console.warn('Supabase 삭제 시도:', err);
   }
 
-  return { success: true };
+  // Fallback delete by student_name & location_id
+  for (const s of list) {
+    if (typeof s === 'object' && s !== null && s.student_name && s.location_id) {
+      try {
+        await supabase
+          .from('quiz_submissions')
+          .delete()
+          .eq('student_name', s.student_name)
+          .eq('location_id', s.location_id);
+      } catch (e) {}
+    }
+  }
+
+  return { success: true, count: list.length };
+}
+
+/**
+ * Delete a single submission by ID or submission object with realtime broadcast to students
+ */
+export async function deleteSubmission(submissionOrId, user = null) {
+  return await deleteSubmissions([submissionOrId], user);
 }
 
 /**

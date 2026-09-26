@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle, Shield, Clock, Calendar, ListFilter, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig, subscribeSubmissions } from '../utils/supabaseService';
+import { fetchAllSubmissions, deleteSubmission, deleteSubmissions, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig, subscribeSubmissions } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 import SuperAdminModal from './SuperAdminModal';
 
@@ -796,7 +796,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
 
   // Delete all submissions of a student (이름 클릭 또는 휴지통 클릭 시)
   const handleDeleteStudent = async (studentName, studentSubs = {}) => {
-    const subList = Object.values(studentSubs);
+    let subList = Object.values(studentSubs || {}).filter(Boolean);
+    if (subList.length === 0) {
+      subList = sessionSubmissions.filter(s => (s.student_name || '').trim() === (studentName || '').trim());
+    }
+    if (subList.length === 0) {
+      subList = submissions.filter(s => (s.student_name || '').trim() === (studentName || '').trim());
+    }
     if (subList.length === 0) {
       alert(`'${studentName}' 학생의 제출 데이터가 없습니다.`);
       return;
@@ -804,11 +810,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     const countStr = subList.length > 0 ? ` (${subList.length}개 답안)` : '';
     if (!window.confirm(`'${studentName}' 학생의 모든 제출 기록${countStr}을 삭제하시겠습니까?`)) return;
     sound.playClick();
-    for (const s of subList) {
-      await deleteSubmission(s, user);
-    }
-    const delIds = new Set(subList.map(s => s.id));
-    setSubmissions(prev => prev.filter(item => !delIds.has(item.id)));
+
+    // 1. Immediately remove from React state for zero-latency UI update
+    const delIds = new Set(subList.map(s => String(s.id)));
+    setSubmissions(prev => prev.filter(item => !delIds.has(String(item.id)) && !(item.student_name === studentName && String(item.session_id || '') === String(activeSessionId))));
+
+    // 2. Perform comprehensive batch deletion across Supabase, LocalStorage, broadcast, and Cloud Tombstone
+    await deleteSubmissions(subList, user);
     await loadSubmissions();
     alert(`'${studentName}' 학생의 제출 기록이 삭제되었습니다.`);
   };
@@ -1347,11 +1355,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const handleDeleteTimeGroup = async (groupKey, groupSubs) => {
     if (!window.confirm(`[${groupKey}] 시간대에 제출된 모든 답안(${groupSubs.length}건)을 삭제하시겠습니까?`)) return;
     sound.playClick();
-    const ids = new Set(groupSubs.map(s => s.id).filter(Boolean));
-    setSubmissions(prev => prev.filter(s => !ids.has(s.id)));
-    for (const sub of groupSubs) {
-      await deleteSubmission(sub, user);
-    }
+    const ids = new Set(groupSubs.map(s => String(s.id)).filter(Boolean));
+    setSubmissions(prev => prev.filter(s => !ids.has(String(s.id))));
+    await deleteSubmissions(groupSubs, user);
     await loadSubmissions();
     alert(`[${groupKey}] 시간대 데이터가 삭제되었습니다.`);
   };
@@ -2454,21 +2460,14 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                           </td>
                           <td style={{ padding: '8px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
                             <button
-                              onClick={async () => {
-                                const subList = Object.values(studentSubs);
-                                if (subList.length === 0) return;
-                                if (!window.confirm(`'${studentName}' 학생의 이 시간대 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
-                                sound.playClick();
-                                for (const s of subList) {
-                                  await deleteSubmission(s, user);
-                                }
-                                setSubmissions(prev => prev.filter(item => !subList.some(del => del.id === item.id)));
-                                loadSubmissions();
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteStudent(studentName, studentSubs);
                               }}
-                              style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
-                              title="해당 학생의 이 시간대 제출 기록 삭제"
+                              style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '4px', opacity: 0.8 }}
+                              title={`'${studentName}' 학생의 제출 기록 삭제`}
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         </tr>
@@ -2670,21 +2669,14 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       {/* 학생 제출 전체 삭제 */}
                       <td style={{ padding: '8px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
                         <button
-                          onClick={async () => {
-                            const subList = Object.values(studentSubs);
-                            if (subList.length === 0) return;
-                            if (!window.confirm(`'${studentName}' 학생의 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
-                            sound.playClick();
-                            for (const s of subList) {
-                              await deleteSubmission(s, user);
-                            }
-                            setSubmissions(prev => prev.filter(item => !subList.some(del => del.id === item.id)));
-                            loadSubmissions();
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteStudent(studentName, studentSubs);
                           }}
-                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
-                          title="해당 학생의 제출 기록 삭제"
+                          style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '4px', opacity: 0.8 }}
+                          title={`'${studentName}' 학생의 제출 기록 삭제`}
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
