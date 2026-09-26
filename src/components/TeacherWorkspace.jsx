@@ -264,6 +264,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
   const [selectedTimeGroup, setSelectedTimeGroup] = useState('ALL');
   const [timeViewMode, setTimeViewMode] = useState('grouped'); // 'grouped' (시간대별 묶어보기) | 'single' (단일 통합 테이블)
+  const [isArchivedOpen, setIsArchivedOpen] = useState(false); // 아코디언 접힘/펼침 상태
 
   // Excel Import states
   const fileInputRef = useRef(null);
@@ -1809,32 +1810,49 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
         </div>
       </div>
 
-      {/* SECTION 2: Archived Historical Sessions (Presented Separately Below) */}
+      {/* SECTION 2: Archived Historical Sessions (Accordion Collapsible) */}
       {archivedTimeSessions.length > 0 && (
         <div style={{
           marginTop: '1.5rem',
           marginBottom: '2.5rem',
           background: '#141414',
-          border: '1px solid #282828',
+          border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.4)' : '#282828'),
           borderRadius: '16px',
-          padding: '1.25rem 1.5rem'
+          overflow: 'hidden',
+          transition: 'all 0.2s ease'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Accordion Header */}
+          <div
+            onClick={() => setIsArchivedOpen(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.25rem 1.5rem',
+              cursor: 'pointer',
+              userSelect: 'none',
+              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.04)' : 'transparent',
+              transition: 'background 0.2s ease',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '8px',
                 background: 'rgba(56, 189, 248, 0.15)',
                 color: '#38bdf8',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
                 <Clock size={18} />
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
                     📦 과거 수업 보관 지도
                   </h2>
@@ -1847,17 +1865,44 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 </div>
               </div>
             </div>
+
+            {/* Accordion Toggle Button */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: isArchivedOpen ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid ' + (isArchivedOpen ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.12)'),
+              color: isArchivedOpen ? '#38bdf8' : '#cbd5e1',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              transition: 'all 0.15s ease'
+            }}>
+              <span>{isArchivedOpen ? '보관 목록 접기' : '보관 목록 펼치기'}</span>
+              {isArchivedOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
-              gap: '1.25rem'
-            }}
-          >
-            {archivedTimeSessions.map(session => renderSessionCard(session, true))}
-          </div>
+          {/* Accordion Content */}
+          {isArchivedOpen && (
+            <div style={{
+              padding: '0 1.5rem 1.5rem 1.5rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              paddingTop: '1.25rem'
+            }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(460px, 1fr))',
+                  gap: '1.25rem'
+                }}
+              >
+                {archivedTimeSessions.map(session => renderSessionCard(session, true))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
