@@ -61,16 +61,6 @@ export const CLIMATE_SUB_CHOICES = {
     { label: '서안 해양성 기후', icon: '🌊🌾' },
     { label: '지중해성 기후', icon: '🫒☀️' },
     { label: '온대 계절풍 기후', icon: '🌾🍚' }
-  ],
-  '냉대 기후': [
-    { label: '타이가(침엽수림) 기후', icon: '🌲' }
-  ],
-  '한대 기후': [
-    { label: '툰드라(극지방) 기후', icon: '❄️' },
-    { label: '빙설 기후', icon: '🧊' }
-  ],
-  '고산 기후': [
-    { label: '고산(상춘) 기후', icon: '🏔️' }
   ]
 };
 
