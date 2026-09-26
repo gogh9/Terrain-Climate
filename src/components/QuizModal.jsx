@@ -4,15 +4,16 @@ import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
 import { saveQuizSubmission } from '../utils/supabaseService';
 
-// 지형 대분류 선택지 (1단계)
+// 지형 대분류 선택지 (1단계) - 이미지 순서: 산, 사막, 초원, 하천, 해안
 export const LANDFORM_MAIN_CHOICES = [
   { label: '산', icon: '⛰️' },
+  { label: '사막', icon: '🏜️' },
+  { label: '초원', icon: '🌾' },
   { label: '하천', icon: '🌊' },
-  { label: '평야·초원·사막', icon: '🏕️' },
   { label: '해안', icon: '🏖️' }
 ];
 
-// 지형 하부 요소 세부 선택지 (2단계)
+// 지형 하부 요소 세부 선택지 (2단계) - 산, 하천, 해안만 2단계 하부 요소 제공 (사막, 초원은 1단계로 완료)
 export const LANDFORM_SUB_CHOICES = {
   '산': [
     { label: '산맥', icon: '🏔️' },
@@ -23,11 +24,6 @@ export const LANDFORM_SUB_CHOICES = {
     { label: '폭포', icon: '💦' },
     { label: '강', icon: '🌊' },
     { label: '호수', icon: '🏞️' }
-  ],
-  '평야·초원·사막': [
-    { label: '초원', icon: '🏕️' },
-    { label: '사막', icon: '🏜️' },
-    { label: '평야', icon: '🌾' }
   ],
   '해안': [
     { label: '피오르', icon: '🏔️🌊' },
@@ -110,13 +106,14 @@ export default function QuizModal({
     const prev = previousAnswer?.name || '';
     if (!prev) return '';
     if (prev.includes('산맥') || prev.includes('고원') || prev.includes('화산') || prev === '산' || prev.startsWith('산')) return '산';
+    if (prev.includes('사막')) return '사막';
+    if (prev.includes('초원')) return '초원';
     if (prev.includes('강') || prev.includes('호수') || prev.includes('폭포') || prev === '하천' || prev.startsWith('하천')) return '하천';
-    if (prev.includes('초원') || prev.includes('사막') || prev.includes('평야') || prev.includes('평야·초원·사막')) return '평야·초원·사막';
     if (prev.includes('피오르') || prev.includes('갯벌') || prev.includes('해안') || prev.includes('해변') || prev.includes('산호') || prev.includes('암석') || prev.includes('모래')) return '해안';
     return '';
   });
 
-  // 지형 하부 요소(세부 지형) 선택 상태
+  // 지형 하부 요소(세부 지형) 선택 상태 (산, 하천, 해안만 사용)
   const [selectedSubType, setSelectedSubType] = useState(() => {
     if (location.category === 'climate') return '';
     const prev = previousAnswer?.name || '';
@@ -127,9 +124,6 @@ export default function QuizModal({
     if (prev.includes('폭포')) return '폭포';
     if (prev.includes('강')) return '강';
     if (prev.includes('호수')) return '호수';
-    if (prev.includes('초원')) return '초원';
-    if (prev.includes('사막')) return '사막';
-    if (prev.includes('평야')) return '평야';
     if (prev.includes('피오르')) return '피오르';
     if (prev.includes('갯벌')) return '갯벌';
     if (prev.includes('산호')) return '산호 해안';
@@ -227,10 +221,10 @@ export default function QuizModal({
       }
     } else {
       if (!selectedMainType) {
-        alert('이 지역에서 볼 수 있는 지형(대분류)을 먼저 선택해 주세요!');
+        alert('이 지역에서 볼 수 있는 지형을 먼저 선택해 주세요!');
         return;
       }
-      if (!selectedSubType) {
+      if (LANDFORM_SUB_CHOICES[selectedMainType] && !selectedSubType) {
         alert(`'${selectedMainType}'의 세부 지형(하부 요소)을 선택해 주세요!`);
         return;
       }
@@ -251,7 +245,7 @@ export default function QuizModal({
 
     const cleanName = location.category === 'climate'
       ? `${selectedClimateMain} - ${selectedClimateSub || selectedClimateMain}`
-      : `${selectedMainType} - ${selectedSubType}`;
+      : (LANDFORM_SUB_CHOICES[selectedMainType] ? `${selectedMainType} - ${selectedSubType}` : selectedMainType);
 
     // 1. Name Check (지형 or 기후 선택지 정답 검사)
     let isNameCorrect = false;
@@ -280,34 +274,33 @@ export default function QuizModal({
       const expMain = location.mainType || (
         ['산맥', '고원', '화산', '산지'].includes(location.subType) ? '산' :
         (['하천', '강', '호수', '폭포'].includes(location.subType) ? '하천' :
-        (['초원', '사막', '평야'].includes(location.subType) ? '평야·초원·사막' : '해안'))
+        (location.subType === '사막' ? '사막' :
+        (location.subType === '초원' ? '초원' : '해안')))
       );
       const expSub = location.subType || '';
 
       isMainCorrect = selectedMainType === expMain ||
-        (selectedMainType === '평야·초원·사막' && ['평야', '초원', '사막', '평야·초원·사막'].includes(expMain)) ||
-        (['산맥', '고원', '화산', '산지'].includes(expSub) && selectedMainType === '산') ||
-        (['하천', '강', '호수', '폭포'].includes(expSub) && selectedMainType === '하천') ||
-        (['초원', '사막', '평야'].includes(expSub) && selectedMainType === '평야·초원·사막') ||
-        (['피오르', '갯벌', '모래 해안', '암석 해안', '산호 해안'].includes(expSub) && selectedMainType === '해안');
+        (selectedMainType === '사막' && (expMain.includes('사막') || expSub.includes('사막'))) ||
+        (selectedMainType === '초원' && (expMain.includes('초원') || expSub.includes('초원')));
 
-      isSubCorrect = selectedSubType === expSub ||
-        (expSub.includes('산맥') && selectedSubType === '산맥') ||
-        (expSub.includes('고원') && selectedSubType === '고원') ||
-        (expSub.includes('화산') && selectedSubType === '화산') ||
-        (expSub.includes('강') && selectedSubType === '강') ||
-        (expSub.includes('호수') && selectedSubType === '호수') ||
-        (expSub.includes('폭포') && selectedSubType === '폭포') ||
-        (expSub.includes('초원') && selectedSubType === '초원') ||
-        (expSub.includes('사막') && selectedSubType === '사막') ||
-        (expSub.includes('평야') && selectedSubType === '평야') ||
-        (expSub.includes('피오르') && selectedSubType === '피오르') ||
-        (expSub.includes('갯벌') && selectedSubType === '갯벌') ||
-        (expSub.includes('산호') && selectedSubType.includes('산호')) ||
-        (expSub.includes('암석') && selectedSubType.includes('암석')) ||
-        (expSub.includes('모래') && selectedSubType.includes('모래'));
+      if (LANDFORM_SUB_CHOICES[selectedMainType]) {
+        isSubCorrect = selectedSubType === expSub ||
+          (expSub.includes('산맥') && selectedSubType === '산맥') ||
+          (expSub.includes('고원') && selectedSubType === '고원') ||
+          (expSub.includes('화산') && selectedSubType === '화산') ||
+          (expSub.includes('강') && selectedSubType === '강') ||
+          (expSub.includes('호수') && selectedSubType === '호수') ||
+          (expSub.includes('폭포') && selectedSubType === '폭포') ||
+          (expSub.includes('피오르') && selectedSubType === '피오르') ||
+          (expSub.includes('갯벌') && selectedSubType === '갯벌') ||
+          (expSub.includes('산호') && selectedSubType.includes('산호')) ||
+          (expSub.includes('암석') && selectedSubType.includes('암석')) ||
+          (expSub.includes('모래') && selectedSubType.includes('모래'));
+      } else {
+        isSubCorrect = true;
+      }
 
-      isNameCorrect = isMainCorrect && isSubCorrect;
+      isNameCorrect = isMainCorrect && (LANDFORM_SUB_CHOICES[selectedMainType] ? isSubCorrect : true);
     }
 
     // 2. Feature Keywords Check (키워드 2개 이상 매칭 시 인정)
@@ -333,8 +326,8 @@ export default function QuizModal({
         isSuccess: true,
         score: 100,
         message: location.category === 'climate'
-          ? `🎉 참 잘했어요! 기후(${selectedClimateMain} > ${selectedClimateSub})와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`
-          : `🎉 참 잘했어요! 지형(${selectedMainType} > ${selectedSubType})과 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
+          ? `🎉 참 잘했어요! 기후(${selectedClimateMain}${selectedClimateSub ? ` > ${selectedClimateSub}` : ''})와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`
+          : `🎉 참 잘했어요! 지형(${selectedMainType}${selectedSubType && LANDFORM_SUB_CHOICES[selectedMainType] ? ` > ${selectedSubType}` : ''})과 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
         matchedKeywords: matchedFeatureKeywords
       });
       onComplete(location.id, { name: cleanName, feature: cleanFeature });
@@ -348,10 +341,10 @@ export default function QuizModal({
           nameHintMsg = `기후의 대분류(${selectedClimateMain})를 다시 확인해 보세요.`;
         }
       } else if (location.category === 'landform') {
-        if (isMainCorrect && !isSubCorrect) {
+        if (LANDFORM_SUB_CHOICES[selectedMainType] && isMainCorrect && !isSubCorrect) {
           nameHintMsg = `'${selectedMainType}' 지형은 맞았어요! 세부 지형(${selectedSubType})을 다시 확인해 보세요.`;
         } else {
-          nameHintMsg = `지형의 대분류(${selectedMainType})를 다시 확인해 보세요.`;
+          nameHintMsg = `지형(${selectedMainType})을 다시 확인해 보세요.`;
         }
       }
       setFeedback({
@@ -864,7 +857,7 @@ export default function QuizModal({
                           </span>
                         )}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                         {LANDFORM_MAIN_CHOICES.map((opt) => {
                           const isSelected = selectedMainType === opt.label;
                           return (
@@ -881,19 +874,19 @@ export default function QuizModal({
                                 }
                               }}
                               style={{
-                                padding: '0.8rem 0.4rem',
+                                padding: '0.8rem 0.2rem',
                                 background: isSelected ? '#1ed760' : '#1f1f1f',
                                 color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
                                 border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
                                 borderRadius: '12px',
-                                fontSize: '0.92rem',
+                                fontSize: '0.95rem',
                                 fontWeight: isSelected ? 900 : 700,
                                 cursor: isInputAllowed ? 'pointer' : 'not-allowed',
                                 opacity: isInputAllowed ? 1 : 0.6,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '5px',
+                                gap: '6px',
                                 wordBreak: 'keep-all',
                                 textAlign: 'center',
                                 boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
