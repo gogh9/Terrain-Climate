@@ -234,6 +234,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
 
   // Excel Import states
   const fileInputRef = useRef(null);
