@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle, Shield } from 'lucide-react';
+import { Plus, Download, Upload, Copy, ExternalLink, RotateCcw, Trash2, ChevronDown, ChevronUp, LogOut, Check, Users, Eye, Search, FileText, Table, LayoutGrid, X, RefreshCw, AlignLeft, FileSpreadsheet, CheckCircle, Shield, Clock, Calendar, ListFilter, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { fetchAllSubmissions, deleteSubmission, resetSessionSubmissions, saveBatchSubmissions, signOutUser, getUserNamespace, generateSessionId, getStudentShareUrl, copyToClipboard, broadcastSessionConfig, subscribeSessionConfig, subscribeSubmissions } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
@@ -170,6 +170,24 @@ export const renumberSessions = (sessionList) => {
   });
 };
 
+// 입력 시간대 분류 헬퍼 (날짜 및 시간대별 세분화)
+export const getTimeGroupKey = (isoString) => {
+  if (!isoString) return '미분류 시간대';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '미분류 시간대';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    const hour = d.getHours();
+    const ampm = hour < 12 ? '오전' : '오후';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${year}. ${month}. ${date}. ${ampm} ${hour12}시경 (${String(hour).padStart(2, '0')}:00~${String(hour).padStart(2, '0')}:59)`;
+  } catch {
+    return '미분류 시간대';
+  }
+};
+
 export default function TeacherWorkspace({ user, locations = [], initialSessionId, onEnterMap, onLogout }) {
   const userNs = getUserNamespace(user);
 
@@ -235,6 +253,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
   const [copiedId, setCopiedId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSuperAdminModal, setShowSuperAdminModal] = useState(false);
+  const [selectedTimeGroup, setSelectedTimeGroup] = useState('ALL');
+  const [timeViewMode, setTimeViewMode] = useState('grouped'); // 'grouped' (시간대별 묶어보기) | 'single' (단일 통합 테이블)
 
   // Excel Import states
   const fileInputRef = useRef(null);
@@ -974,6 +994,200 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     return Object.keys(studentMatrixMap).sort(compareStudents);
   }, [studentMatrixMap]);
 
+  // 시간대별 그룹화 (1시간 단위 클러스터링)
+  const timeGroups = useMemo(() => {
+    const map = {};
+    sessionSubmissions.forEach(sub => {
+      const groupKey = getTimeGroupKey(sub.created_at);
+      if (!map[groupKey]) {
+        map[groupKey] = {
+          key: groupKey,
+          rawDate: sub.created_at || '1970-01-01',
+          submissions: []
+        };
+      }
+      map[groupKey].submissions.push(sub);
+    });
+
+    return Object.values(map)
+      .map(group => {
+        const groupSubsByStudent = {};
+        const groupMatrixMap = {};
+        group.submissions.forEach(sub => {
+          const raw = sub.student_name || '익명 학생';
+          if (!groupSubsByStudent[raw]) groupSubsByStudent[raw] = [];
+          groupSubsByStudent[raw].push(sub);
+
+          if (!groupMatrixMap[raw]) groupMatrixMap[raw] = {};
+          const rawTitle = sub.location_title || sub.answer_name;
+          const title = normalizeTitle(rawTitle);
+          if (title) {
+            groupMatrixMap[raw][title] = sub;
+          }
+        });
+        const groupSortedStudents = Object.keys(groupSubsByStudent).sort(compareStudents);
+
+        return {
+          ...group,
+          matrixMap: groupMatrixMap,
+          sortedStudents: groupSortedStudents,
+          studentCount: groupSortedStudents.length,
+          submissionCount: group.submissions.length
+        };
+      })
+      .sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+  }, [sessionSubmissions]);
+
+  // 시간대 필터가 적용된 제출 데이터
+  const displayedSessionSubmissions = useMemo(() => {
+    if (selectedTimeGroup === 'ALL') return sessionSubmissions;
+    return sessionSubmissions.filter(sub => getTimeGroupKey(sub.created_at) === selectedTimeGroup);
+  }, [sessionSubmissions, selectedTimeGroup]);
+
+  // 시간대 필터가 적용된 매트릭스 맵
+  const displayedStudentMatrixMap = useMemo(() => {
+    const map = {};
+    displayedSessionSubmissions.forEach(sub => {
+      const raw = sub.student_name || '익명 학생';
+      if (!map[raw]) map[raw] = {};
+      const rawTitle = sub.location_title || sub.answer_name;
+      const title = normalizeTitle(rawTitle);
+      if (title) {
+        map[raw][title] = sub;
+      }
+    });
+    return map;
+  }, [displayedSessionSubmissions]);
+
+  const displayedSortedMatrixStudentNames = useMemo(() => {
+    return Object.keys(displayedStudentMatrixMap).sort(compareStudents);
+  }, [displayedStudentMatrixMap]);
+
+  // 특정 시간대 데이터 엑셀 다운로드
+  const handleExportTimeGroupExcel = (group) => {
+    sound.playClick();
+    const columns = activeColumns;
+    const sortedNames = group.sortedStudents;
+    const studentsMap = {};
+    group.submissions.forEach(sub => {
+      const rawName = sub.student_name || '익명 학생';
+      if (!studentsMap[rawName]) studentsMap[rawName] = {};
+      const rawTitle = sub.location_title || sub.answer_name;
+      const title = normalizeTitle(rawTitle);
+      if (title) studentsMap[rawName][title] = sub.answer_feature || '';
+    });
+
+    let rowXmlList = '';
+    sortedNames.forEach((rawName) => {
+      const info = parseStudentInfo(rawName);
+      const studentAnswers = studentsMap[rawName] || {};
+      const answerCells = columns.map(col => {
+        const feat = studentAnswers[col] || '';
+        return `<Cell ss:StyleID="TextCell"><Data ss:Type="String">${escapeXml(feat)}</Data></Cell>`;
+      }).join('');
+      rowXmlList += `
+   <Row ss:Height="22">
+    <Cell ss:StyleID="CenterCell"><Data ss:Type="String">${escapeXml(info.classNum || '-')}</Data></Cell>
+    <Cell ss:StyleID="CenterCell"><Data ss:Type="String">${escapeXml(info.studentNum || '-')}</Data></Cell>
+    <Cell ss:StyleID="CenterCell"><Data ss:Type="String">${escapeXml(info.name || rawName)}</Data></Cell>
+    ${answerCells}
+   </Row>`;
+    });
+
+    const colWidths = [
+      '<Column ss:Width="45"/>',
+      '<Column ss:Width="45"/>',
+      '<Column ss:Width="80"/>',
+      ...columns.map(() => '<Column ss:Width="160"/>')
+    ].join('\n   ');
+
+    const headerCells = [
+      '<Cell ss:StyleID="Header"><Data ss:Type="String">반</Data></Cell>',
+      '<Cell ss:StyleID="Header"><Data ss:Type="String">번호</Data></Cell>',
+      '<Cell ss:StyleID="Header"><Data ss:Type="String">이름</Data></Cell>',
+      ...columns.map(col => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(col)}</Data></Cell>`)
+    ].join('');
+
+    const xmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="맑은 고딕" ss:Size="10"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#C0C0C0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#C0C0C0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#C0C0C0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#C0C0C0"/>
+   </Borders>
+   <Font ss:FontName="맑은 고딕" ss:Size="10" ss:Bold="1"/>
+   <Interior ss:Color="#F2F2F2" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CenterCell">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   </Borders>
+   <Font ss:FontName="맑은 고딕" ss:Size="10"/>
+  </Style>
+  <Style ss:ID="TextCell">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   </Borders>
+   <Font ss:FontName="맑은 고딕" ss:Size="10"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="시간대별학습제출">
+  <Table>
+   ${colWidths}
+   <Row ss:Height="28">
+    ${headerCells}
+   </Row>
+   ${rowXmlList}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xmlTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const safeTitle = `${activeSession?.title || '회차'}_${group.key}`.replace(/[\\/:*?"<>|]/g, '_');
+    link.setAttribute('download', `${safeTitle}_학습제출.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 특정 시간대 데이터 일괄 삭제
+  const handleDeleteTimeGroup = async (groupKey, groupSubs) => {
+    if (!window.confirm(`[${groupKey}] 시간대에 제출된 모든 답안(${groupSubs.length}건)을 삭제하시겠습니까?`)) return;
+    sound.playClick();
+    const ids = new Set(groupSubs.map(s => s.id).filter(Boolean));
+    setSubmissions(prev => prev.filter(s => !ids.has(s.id)));
+    for (const sub of groupSubs) {
+      await deleteSubmission(sub, user);
+    }
+    await loadSubmissions();
+    alert(`[${groupKey}] 시간대 데이터가 삭제되었습니다.`);
+  };
+
   return (
     <div
       style={{
@@ -1394,7 +1608,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       {/* Student Submissions Section */}
       <div style={{ marginTop: '1.5rem' }}>
         {/* Section Header with Stats & Controls */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
@@ -1414,6 +1628,11 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               <span style={{ background: '#282828', color: '#1ed760', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
                 참여 학생 {studentNames.length}명 ({sessionSubmissions.length}개 답안)
               </span>
+              {timeGroups.length > 1 && (
+                <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                  🕒 {timeGroups.length}개 시간대 감지됨
+                </span>
+              )}
             </div>
           </div>
 
@@ -1437,10 +1656,10 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-              title="현재 보고 있는 회차 학생 제출 데이터를 엑셀로 다운로드"
+              title="현재 보고 있는 회차 전체 학생 제출 데이터를 엑셀로 다운로드"
             >
               <Download size={13} />
-              <span>엑셀 다운로드</span>
+              <span>전체 엑셀 다운로드</span>
             </button>
 
             <button
@@ -1469,9 +1688,128 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
           </div>
         </div>
 
+        {/* TIME PERIOD CLASSIFICATION & VIEW TOGGLE BAR */}
+        {sessionSubmissions.length > 0 && (
+          <div style={{
+            background: '#181818',
+            border: '1px solid #282828',
+            borderRadius: '12px',
+            padding: '0.85rem 1.25rem',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            {/* Left: Time Group Filter Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#a1a1aa', fontSize: '0.82rem', fontWeight: 800, marginRight: '4px' }}>
+                <Clock size={15} color="#38bdf8" />
+                <span>입력 시간대별 분류:</span>
+              </div>
 
+              <button
+                onClick={() => { sound.playClick(); setSelectedTimeGroup('ALL'); }}
+                style={{
+                  background: selectedTimeGroup === 'ALL' ? '#38bdf8' : '#222222',
+                  color: selectedTimeGroup === 'ALL' ? '#000000' : '#d4d4d8',
+                  border: selectedTimeGroup === 'ALL' ? '1px solid #38bdf8' : '1px solid #333333',
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.78rem',
+                  fontWeight: selectedTimeGroup === 'ALL' ? 800 : 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                전체 시간대 ({sessionSubmissions.length}건)
+              </button>
 
-        {/* Content Body: Empty State or Horizontal Matrix */}
+              {timeGroups.map(group => {
+                const isSelected = selectedTimeGroup === group.key;
+                return (
+                  <button
+                    key={group.key}
+                    onClick={() => { sound.playClick(); setSelectedTimeGroup(group.key); }}
+                    style={{
+                      background: isSelected ? '#1ed760' : '#222222',
+                      color: isSelected ? '#000000' : '#e4e4e7',
+                      border: isSelected ? '1px solid #1ed760' : '1px solid #333333',
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      fontSize: '0.78rem',
+                      fontWeight: isSelected ? 800 : 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span>🕒 {group.key}</span>
+                    <span style={{
+                      background: isSelected ? 'rgba(0,0,0,0.25)' : '#333333',
+                      color: isSelected ? '#000000' : '#a1a1aa',
+                      padding: '1px 6px',
+                      borderRadius: '9999px',
+                      fontSize: '0.7rem',
+                      fontWeight: 800
+                    }}>
+                      {group.studentCount}명 · {group.submissionCount}건
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right: View Mode Toggle (시간대별 분리 묶어보기 vs 단일 테이블) */}
+            {timeGroups.length > 1 && selectedTimeGroup === 'ALL' && (
+              <div style={{ display: 'flex', alignItems: 'center', background: '#121212', borderRadius: '8px', padding: '3px', border: '1px solid #2a2a2a' }}>
+                <button
+                  onClick={() => { sound.playClick(); setTimeViewMode('grouped'); }}
+                  style={{
+                    background: timeViewMode === 'grouped' ? '#282828' : 'transparent',
+                    color: timeViewMode === 'grouped' ? '#1ed760' : '#888888',
+                    border: 'none',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.76rem',
+                    fontWeight: timeViewMode === 'grouped' ? 800 : 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Layers size={13} />
+                  시간대별 분리 묶어보기
+                </button>
+                <button
+                  onClick={() => { sound.playClick(); setTimeViewMode('single'); }}
+                  style={{
+                    background: timeViewMode === 'single' ? '#282828' : 'transparent',
+                    color: timeViewMode === 'single' ? '#1ed760' : '#888888',
+                    border: 'none',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.76rem',
+                    fontWeight: timeViewMode === 'single' ? 800 : 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Table size={13} />
+                  단일 통합 테이블
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content Body: Empty State or Grouped/Single Matrix View */}
         {sessionSubmissions.length === 0 ? (
           <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#71717a', background: '#181818', borderRadius: '16px', border: '1px solid #282828' }}>
             <FileText size={32} style={{ margin: '0 auto 10px auto', display: 'block', opacity: 0.5 }} />
@@ -1479,9 +1817,281 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               이 지도('{activeSession?.title || '선택된 지도'}')에 제출된 학생 학습 기록이 없습니다. 학생들이 지도를 탐험하며 작성하면 여기에 실시간으로 표시됩니다.
             </div>
           </div>
+        ) : timeViewMode === 'grouped' && timeGroups.length > 1 && selectedTimeGroup === 'ALL' ? (
+          /* GROUPED TIMELINE VIEW: Each Time Block as a Distinct Card */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {timeGroups.map(group => (
+              <div
+                key={group.key}
+                style={{
+                  borderRadius: '14px',
+                  border: '1px solid #2d2d2d',
+                  background: '#181818',
+                  boxShadow: 'rgba(0, 0, 0, 0.4) 0px 8px 24px',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Time Block Card Header */}
+                <div style={{
+                  padding: '1rem 1.25rem',
+                  background: '#1e1e1e',
+                  borderBottom: '1px solid #2d2d2d',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      color: '#38bdf8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                        {group.key}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', fontSize: '0.78rem', color: '#a1a1aa' }}>
+                        <span>참여 학생: <strong style={{ color: '#1ed760' }}>{group.studentCount}명</strong></span>
+                        <span>•</span>
+                        <span>답안 건수: <strong style={{ color: '#38bdf8' }}>{group.submissionCount}건</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions for this specific time group */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => handleExportTimeGroupExcel(group)}
+                      style={{
+                        background: '#242424',
+                        border: '1px solid #383838',
+                        color: '#1ed760',
+                        padding: '5px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="이 시간대 학생 제출 답안만 엑셀로 다운로드"
+                    >
+                      <Download size={12} />
+                      <span>이 시간대 엑셀</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteTimeGroup(group.key, group.submissions)}
+                      style={{
+                        background: '#261c1c',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#f87171',
+                        padding: '5px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="이 시간대 제출 답안 일괄 삭제"
+                    >
+                      <Trash2 size={12} />
+                      <span>이 시간대 삭제</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Matrix Table for this Time Block */}
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr style={{ background: '#191919', borderBottom: '2px solid #2d2d2d', color: '#1ed760' }}>
+                      <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center' }}>반</th>
+                      <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center' }}>번호</th>
+                      <th style={{ padding: '10px 4px', width: '70px', textAlign: 'center', borderRight: '2px solid #2d2d2d' }}>이름</th>
+                      {activeColumns.map(col => {
+                        const isLand = activeSession?.categoryFilter === 'landform' || LANDFORM_ORDER.includes(col);
+                        return (
+                          <th
+                            key={col}
+                            style={{
+                              padding: '10px 6px',
+                              textAlign: 'center',
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              borderRight: '1px solid #282828',
+                              lineHeight: 1.25
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.85rem' }}>{isLand ? '🏔️' : '☀️'}</span>
+                              <span style={{ color: '#1ed760', fontSize: '0.8rem', wordBreak: 'keep-all' }}>{col}</span>
+                            </div>
+                          </th>
+                        );
+                      })}
+                      <th style={{ padding: '10px 4px', width: '65px', textAlign: 'center', borderRight: '1px solid #282828', color: '#b3b3b3', fontSize: '0.78rem' }}>현황</th>
+                      <th style={{ padding: '10px 2px', width: '38px', textAlign: 'center', color: '#b3b3b3', fontSize: '0.78rem' }}>삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.sortedStudents.map((studentName, idx) => {
+                      const parsed = parseStudentInfo(studentName);
+                      const studentSubs = group.matrixMap[studentName] || {};
+                      const submittedCount = Object.keys(studentSubs).length;
+                      const isFull = submittedCount >= activeColumns.length && activeColumns.length > 0;
+
+                      return (
+                        <tr
+                          key={studentName}
+                          style={{
+                            borderBottom: '1px solid #262626',
+                            background: idx % 2 === 0 ? '#181818' : '#141414',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#202020'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#181818' : '#141414'}
+                        >
+                          <td style={{ padding: '8px 2px', textAlign: 'center', fontWeight: 700, color: '#e4e4e7' }}>
+                            {parsed.classNum ? (
+                              <span style={{ background: '#27272a', padding: '2px 5px', borderRadius: '4px', fontSize: '0.78rem' }}>
+                                {parsed.classNum}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td style={{ padding: '8px 2px', textAlign: 'center', fontWeight: 800, color: '#ffffff', fontSize: '0.82rem' }}>
+                            {parsed.studentNum ? `${parsed.studentNum}` : '-'}
+                          </td>
+                          <td style={{ padding: '8px 4px', textAlign: 'center', fontWeight: 900, color: '#1ed760', borderRight: '2px solid #2d2d2d', fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {parsed.name}
+                          </td>
+                          {activeColumns.map(col => {
+                            const sub = studentSubs[col];
+                            if (!sub) {
+                              return (
+                                <td key={col} style={{ padding: '8px 4px', textAlign: 'center', color: '#404040', borderRight: '1px solid #242424', verticalAlign: 'middle' }}>
+                                  <span style={{ fontSize: '0.8rem' }}>-</span>
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={col} style={{ padding: '6px 5px', borderRight: '1px solid #242424', verticalAlign: 'top' }}>
+                                <div
+                                  onClick={() => setSelectedSubmission(sub)}
+                                  style={{
+                                    background: '#121212',
+                                    border: '1px solid #2a2a2a',
+                                    borderRadius: '6px',
+                                    padding: '6px 8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                    minHeight: '52px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between'
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.background = '#1a1a1a'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.background = '#121212'; }}
+                                  title={sub.answer_feature || '(작성 내용 없음)'}
+                                >
+                                  <div style={{
+                                    fontSize: '0.78rem',
+                                    color: '#f4f4f5',
+                                    lineHeight: 1.4,
+                                    wordBreak: 'break-word',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                  }}>
+                                    {sub.answer_feature || '(작성 내용 없음)'}
+                                  </div>
+                                </div>
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '8px 2px', textAlign: 'center', borderRight: '1px solid #282828', verticalAlign: 'middle' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              background: isFull ? 'rgba(30, 215, 96, 0.15)' : 'rgba(255, 164, 43, 0.12)',
+                              color: isFull ? '#1ed760' : '#ffa42b',
+                              border: `1px solid ${isFull ? 'rgba(30, 215, 96, 0.3)' : 'rgba(255, 164, 43, 0.3)'}`,
+                              padding: '2px 5px',
+                              borderRadius: '9999px',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {submittedCount}/{activeColumns.length}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <button
+                              onClick={async () => {
+                                const subList = Object.values(studentSubs);
+                                if (subList.length === 0) return;
+                                if (!window.confirm(`'${studentName}' 학생의 이 시간대 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
+                                sound.playClick();
+                                for (const s of subList) {
+                                  await deleteSubmission(s, user);
+                                }
+                                setSubmissions(prev => prev.filter(item => !subList.some(del => del.id === item.id)));
+                                loadSubmissions();
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
+                              title="해당 학생의 이 시간대 제출 기록 삭제"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
         ) : (
-          /* HORIZONTAL MATRIX VIEW (창 너비에 맞춰 가로 스크롤 없이 전체 표시) */
+          /* SINGLE / FILTERED MATRIX VIEW */
           <div style={{ borderRadius: '12px', border: '1px solid #282828', background: '#181818', boxShadow: 'rgba(0, 0, 0, 0.35) 0px 8px 16px', overflow: 'hidden' }}>
+            {selectedTimeGroup !== 'ALL' && (
+              <div style={{
+                padding: '0.75rem 1.25rem',
+                background: '#1f1f1f',
+                borderBottom: '1px solid #2e2e2e',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#38bdf8', fontWeight: 800, fontSize: '0.85rem' }}>
+                    🕒 선택된 시간대: {selectedTimeGroup}
+                  </span>
+                  <span style={{ background: '#2a2a2a', color: '#e4e4e7', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '9999px' }}>
+                    학생 {displayedSortedMatrixStudentNames.length}명 · 답안 {displayedSessionSubmissions.length}건
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedTimeGroup('ALL')}
+                  style={{ background: '#2d2d2d', border: 'none', color: '#d4d4d8', padding: '3px 10px', borderRadius: '4px', fontSize: '0.75rem', cursor: 'pointer' }}
+                >
+                  전체 시간대로 보기
+                </button>
+              </div>
+            )}
             <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ background: '#1f1f1f', borderBottom: '2px solid #2d2d2d', color: '#1ed760' }}>
@@ -1514,9 +2124,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 </tr>
               </thead>
               <tbody>
-                {sortedMatrixStudentNames.map((studentName, idx) => {
+                {displayedSortedMatrixStudentNames.map((studentName, idx) => {
                   const parsed = parseStudentInfo(studentName);
-                  const studentSubs = studentMatrixMap[studentName] || {};
+                  const studentSubs = displayedStudentMatrixMap[studentName] || {};
                   const submittedCount = Object.keys(studentSubs).length;
                   const isFull = submittedCount >= activeColumns.length && activeColumns.length > 0;
 
@@ -1531,13 +2141,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       onMouseEnter={(e) => e.currentTarget.style.background = '#202020'}
                       onMouseLeave={(e) => e.currentTarget.style.background = idx % 2 === 0 ? '#181818' : '#141414'}
                     >
-                      {/* 반 (컴팩트 가운데 정렬) */}
-                      <td style={{
-                        padding: '8px 2px',
-                        textAlign: 'center',
-                        fontWeight: 700,
-                        color: '#e4e4e7'
-                      }}>
+                      {/* 반 */}
+                      <td style={{ padding: '8px 2px', textAlign: 'center', fontWeight: 700, color: '#e4e4e7' }}>
                         {parsed.classNum ? (
                           <span style={{ background: '#27272a', padding: '2px 5px', borderRadius: '4px', fontSize: '0.78rem' }}>
                             {parsed.classNum}
@@ -1545,29 +2150,13 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                         ) : '-'}
                       </td>
 
-                      {/* 번호 (컴팩트 가운데 정렬) */}
-                      <td style={{
-                        padding: '8px 2px',
-                        textAlign: 'center',
-                        fontWeight: 800,
-                        color: '#ffffff',
-                        fontSize: '0.82rem'
-                      }}>
+                      {/* 번호 */}
+                      <td style={{ padding: '8px 2px', textAlign: 'center', fontWeight: 800, color: '#ffffff', fontSize: '0.82rem' }}>
                         {parsed.studentNum ? `${parsed.studentNum}` : '-'}
                       </td>
 
-                      {/* 이름 (컴팩트 가운데 정렬) */}
-                      <td style={{
-                        padding: '8px 4px',
-                        textAlign: 'center',
-                        fontWeight: 900,
-                        color: '#1ed760',
-                        borderRight: '2px solid #2d2d2d',
-                        fontSize: '0.84rem',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
+                      {/* 이름 */}
+                      <td style={{ padding: '8px 4px', textAlign: 'center', fontWeight: 900, color: '#1ed760', borderRight: '2px solid #2d2d2d', fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {parsed.name}
                       </td>
 
@@ -1576,30 +2165,14 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                         const sub = studentSubs[col];
                         if (!sub) {
                           return (
-                            <td
-                              key={col}
-                              style={{
-                                padding: '8px 4px',
-                                textAlign: 'center',
-                                color: '#404040',
-                                borderRight: '1px solid #242424',
-                                verticalAlign: 'middle'
-                              }}
-                            >
+                            <td key={col} style={{ padding: '8px 4px', textAlign: 'center', color: '#404040', borderRight: '1px solid #242424', verticalAlign: 'middle' }}>
                               <span style={{ fontSize: '0.8rem' }}>-</span>
                             </td>
                           );
                         }
 
                         return (
-                          <td
-                            key={col}
-                            style={{
-                              padding: '6px 5px',
-                              borderRight: '1px solid #242424',
-                              verticalAlign: 'top'
-                            }}
-                          >
+                          <td key={col} style={{ padding: '6px 5px', borderRight: '1px solid #242424', verticalAlign: 'top' }}>
                             <div
                               onClick={() => setSelectedSubmission(sub)}
                               style={{
@@ -1614,14 +2187,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                                 flexDirection: 'column',
                                 justifyContent: 'space-between'
                               }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#1ed760';
-                                e.currentTarget.style.background = '#1a1a1a';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#2a2a2a';
-                                e.currentTarget.style.background = '#121212';
-                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#1ed760'; e.currentTarget.style.background = '#1a1a1a'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.background = '#121212'; }}
                               title={sub.answer_feature || '(작성 내용 없음)'}
                             >
                               <div style={{
@@ -1642,13 +2209,8 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                         );
                       })}
 
-                      {/* 제출 현황 (가운데 정렬) */}
-                      <td style={{
-                        padding: '8px 2px',
-                        textAlign: 'center',
-                        borderRight: '1px solid #282828',
-                        verticalAlign: 'middle'
-                      }}>
+                      {/* 제출 현황 */}
+                      <td style={{ padding: '8px 2px', textAlign: 'center', borderRight: '1px solid #282828', verticalAlign: 'middle' }}>
                         <span style={{
                           display: 'inline-block',
                           background: isFull ? 'rgba(30, 215, 96, 0.15)' : 'rgba(255, 164, 43, 0.12)',
@@ -1664,26 +2226,22 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                         </span>
                       </td>
 
-                      {/* 학생 제출 전체 삭제 (가운데 정렬) */}
-                      <td style={{
-                        padding: '8px 2px',
-                        textAlign: 'center',
-                        verticalAlign: 'middle'
-                      }}>
+                      {/* 학생 제출 전체 삭제 */}
+                      <td style={{ padding: '8px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
                         <button
                           onClick={async () => {
                             const subList = Object.values(studentSubs);
                             if (subList.length === 0) return;
-                            if (!window.confirm(`'${studentName}' 학생의 전체 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
+                            if (!window.confirm(`'${studentName}' 학생의 제출 기록(${subList.length}건)을 삭제하시겠습니까?`)) return;
                             sound.playClick();
                             for (const s of subList) {
                               await deleteSubmission(s, user);
                             }
-                            setSubmissions(prev => prev.filter(item => item.student_name !== studentName));
+                            setSubmissions(prev => prev.filter(item => !subList.some(del => del.id === item.id)));
                             loadSubmissions();
                           }}
                           style={{ background: 'none', border: 'none', color: '#f3727f', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
-                          title="해당 학생의 모든 제출 기록 삭제"
+                          title="해당 학생의 제출 기록 삭제"
                         >
                           <Trash2 size={13} />
                         </button>

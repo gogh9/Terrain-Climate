@@ -14,13 +14,31 @@ import {
 } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
 
+// Time grouping helper
+export const getTimeGroupKey = (isoString) => {
+  if (!isoString) return '미분류 시간대';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '미분류 시간대';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    const hour = d.getHours();
+    const ampm = hour < 12 ? '오전' : '오후';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${year}. ${month}. ${date}. ${ampm} ${hour12}시경 (${String(hour).padStart(2, '0')}:00~${String(hour).padStart(2, '0')}:59)`;
+  } catch {
+    return '미분류 시간대';
+  }
+};
+
 export default function SuperAdminModal({ onClose, user }) {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [submissions, setSubmissions] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Active Tab: 'sessions' | 'explorer' | 'maintenance' | 'danger'
+  // Active Tab: 'explorer' | 'timeline' | 'sessions' | 'maintenance' | 'danger'
   const [activeTab, setActiveTab] = useState('explorer');
 
   // Search & Filter in Explorer
@@ -54,6 +72,7 @@ export default function SuperAdminModal({ onClose, user }) {
   // Summary Metrics
   const stats = useMemo(() => {
     const sessionMap = {};
+    const timeGroupMap = {};
     const students = new Set();
     let legacyCount = 0;
     let configCount = 0;
@@ -72,8 +91,8 @@ export default function SuperAdminModal({ onClose, user }) {
           id: sid,
           count: 0,
           students: new Set(),
-          latestDate: sub.created_at,
-          earliestDate: sub.created_at,
+          latestDate: sub.created_at || '1970-01-01',
+          earliestDate: sub.created_at || '1970-01-01',
           isLegacy: sub.isLegacyUnassigned
         };
       }
@@ -82,18 +101,40 @@ export default function SuperAdminModal({ onClose, user }) {
         sessionMap[sid].students.add(sub.student_name);
         students.add(sub.student_name);
       }
-      if (new Date(sub.created_at) > new Date(sessionMap[sid].latestDate)) {
+      if (sub.created_at && new Date(sub.created_at) > new Date(sessionMap[sid].latestDate)) {
         sessionMap[sid].latestDate = sub.created_at;
       }
-      if (new Date(sub.created_at) < new Date(sessionMap[sid].earliestDate)) {
+      if (sub.created_at && new Date(sub.created_at) < new Date(sessionMap[sid].earliestDate)) {
         sessionMap[sid].earliestDate = sub.created_at;
       }
+
+      // Time block clustering
+      const tKey = getTimeGroupKey(sub.created_at);
+      if (!timeGroupMap[tKey]) {
+        timeGroupMap[tKey] = {
+          key: tKey,
+          rawDate: sub.created_at || '1970-01-01',
+          count: 0,
+          students: new Set(),
+          sessions: new Set(),
+          submissionIds: [],
+          submissions: []
+        };
+      }
+      timeGroupMap[tKey].count++;
+      timeGroupMap[tKey].submissions.push(sub);
+      if (sub.student_name) timeGroupMap[tKey].students.add(sub.student_name);
+      if (sub.resolvedSessionId) timeGroupMap[tKey].sessions.add(sub.resolvedSessionId);
+      if (sub.id) timeGroupMap[tKey].submissionIds.push(sub.id);
     });
+
+    const timeGroupList = Object.values(timeGroupMap).sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
     return {
       totalSubmissions: submissions.filter(s => !s.isConfigRow).length,
       distinctSessions: Object.keys(sessionMap).length,
       sessionList: Object.values(sessionMap).sort((a, b) => b.count - a.count),
+      timeGroupList,
       uniqueStudentsCount: students.size,
       legacyCount,
       configCount
@@ -504,6 +545,7 @@ export default function SuperAdminModal({ onClose, user }) {
         }}>
           {[
             { id: 'explorer', label: '📋 전체 원본 데이터 탐색기' },
+            { id: 'timeline', label: '🕒 시간대별 분석 & 정리' },
             { id: 'sessions', label: '📊 회차(세션)별 관리' },
             { id: 'maintenance', label: '💾 데이터 백업 & 정비' },
             { id: 'danger', label: '🚨 위험 구역 (전체 초기화)' }
@@ -859,6 +901,115 @@ export default function SuperAdminModal({ onClose, user }) {
                       }}
                     >
                       이 회차 전체 삭제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB: TIMELINE (시간대별 분석 & 정리) */}
+          {activeTab === 'timeline' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '1.25rem' }}>
+              {stats.timeGroupList.map(group => (
+                <div
+                  key={group.key}
+                  style={{
+                    background: '#181818',
+                    border: '1px solid #2e2e2e',
+                    borderRadius: '14px',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <Clock size={16} />
+                        </div>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#ffffff' }}>
+                          {group.key}
+                        </h4>
+                      </div>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#38bdf8' }}>
+                        {group.count}건
+                      </span>
+                    </div>
+
+                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', color: '#a1a1aa' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>참여 학생:</span>
+                        <strong style={{ color: '#1ed760' }}>{group.students.size}명</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>관련 세션(회차):</span>
+                        <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                          {Array.from(group.sessions).join(', ') || '(미지정)'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #262626', paddingTop: '0.75rem' }}>
+                    <button
+                      onClick={() => {
+                        setSearchQuery(group.rawDate.slice(0, 10));
+                        setActiveTab('explorer');
+                      }}
+                      style={{
+                        flex: 1,
+                        background: '#242424',
+                        border: '1px solid #383838',
+                        color: '#ffffff',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      데이터 탐색
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`[${group.key}] 시간대에 등록된 ${group.count}건의 모든 데이터를 Supabase에서 삭제하시겠습니까?`)) return;
+                        sound.playClick();
+                        setLoading(true);
+                        const res = await superAdminDeleteSubmissions(group.submissionIds);
+                        if (res.success) {
+                          alert(`[${group.key}] 시간대 데이터 ${res.count}건이 삭제되었습니다.`);
+                          await loadData();
+                        } else {
+                          alert('삭제 실패: ' + res.error);
+                        }
+                        setLoading(false);
+                      }}
+                      style={{
+                        background: '#261c1c',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#f87171',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      이 시간대 삭제
                     </button>
                   </div>
                 </div>
