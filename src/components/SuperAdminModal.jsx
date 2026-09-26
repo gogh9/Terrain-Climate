@@ -131,9 +131,12 @@ export default function SuperAdminModal({ onClose, user }) {
 
     const timeGroupList = Object.values(timeGroupMap).sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
 
+    const namedSessionsCount = Object.keys(sessionMap).filter(sid => sid !== '(미지정)' && sid !== 'undefined' && sid !== 'null').length;
+
     return {
       totalSubmissions: submissions.filter(s => !s.isConfigRow).length,
       distinctSessions: Object.keys(sessionMap).length,
+      namedSessionsCount,
       sessionList: Object.values(sessionMap).sort((a, b) => b.count - a.count),
       timeGroupList,
       uniqueStudentsCount: students.size,
@@ -156,15 +159,25 @@ export default function SuperAdminModal({ onClose, user }) {
         }
       }
 
-      // Search Query
+      // Search Query (Supports student name, location, answer, feature, session ID, and dates YYYY-MM-DD)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const matchName = (sub.student_name || '').toLowerCase().includes(q);
         const matchLoc = (sub.location_title || '').toLowerCase().includes(q);
         const matchAns = (sub.answer_name || '').toLowerCase().includes(q);
         const matchFeat = (sub.resolvedFeature || '').toLowerCase().includes(q);
         const matchSid = (sub.resolvedSessionId || '').toLowerCase().includes(q);
-        return matchName || matchLoc || matchAns || matchFeat || matchSid;
+
+        let matchDate = false;
+        if (sub.created_at) {
+          const rawIso = String(sub.created_at).toLowerCase();
+          const d = new Date(sub.created_at);
+          const dateStr = !isNaN(d.getTime()) ? d.toLocaleDateString('ko-KR') : '';
+          const timeGroup = getTimeGroupKey(sub.created_at).toLowerCase();
+          matchDate = rawIso.includes(q) || dateStr.includes(q) || timeGroup.includes(q);
+        }
+
+        return matchName || matchLoc || matchAns || matchFeat || matchSid || matchDate;
       }
 
       return true;
@@ -472,8 +485,10 @@ export default function SuperAdminModal({ onClose, user }) {
               <Layers size={20} />
             </div>
             <div>
-              <div style={{ fontSize: '0.75rem', color: '#a1a1aa', fontWeight: 600 }}>등록 세션(회차) 수</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#ffffff' }}>{stats.distinctSessions}개 세션</div>
+              <div style={{ fontSize: '0.75rem', color: '#a1a1aa', fontWeight: 600 }}>등록 세션(회차) 구분</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff' }}>
+                {stats.namedSessionsCount > 0 ? `${stats.namedSessionsCount}개 활성 회차` : `미분류(레거시) 1개`}
+              </div>
             </div>
           </div>
 
@@ -587,22 +602,25 @@ export default function SuperAdminModal({ onClose, user }) {
                 flexWrap: 'wrap'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '300px' }}>
+                  {/* Search Bar with Clear Button */}
                   <div style={{
                     position: 'relative',
                     flex: 1,
                     background: '#1c1c1c',
                     borderRadius: '8px',
-                    border: '1px solid #333'
+                    border: '1px solid #333',
+                    display: 'flex',
+                    alignItems: 'center'
                   }}>
                     <Search size={16} color="#71717a" style={{ position: 'absolute', left: '12px', top: '10px' }} />
                     <input
                       type="text"
-                      placeholder="학생 이름, 지점명, 작성 내용, 세션 ID 검색..."
+                      placeholder="학생 이름, 날짜(YYYY-MM-DD), 지점명, 작성 내용, 세션 ID 검색..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '8px 12px 8px 36px',
+                        padding: '8px 32px 8px 36px',
                         background: 'transparent',
                         border: 'none',
                         color: '#ffffff',
@@ -610,6 +628,25 @@ export default function SuperAdminModal({ onClose, user }) {
                         outline: 'none'
                       }}
                     />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#a1a1aa',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title="검색어 지우기"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Session Filter Dropdown */}
@@ -830,7 +867,21 @@ export default function SuperAdminModal({ onClose, user }) {
 
           {/* TAB 2: SESSIONS OVERVIEW */}
           {activeTab === 'sessions' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{
+                background: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                borderRadius: '12px',
+                padding: '1rem 1.25rem',
+                fontSize: '0.83rem',
+                color: '#93c5fd',
+                lineHeight: 1.6
+              }}>
+                <strong>💡 회차(세션) 분류 안내:</strong><br />
+                • <strong>(미지정/레거시)</strong>: 회차 분리 기능이 도입되기 이전에 제출되었던 기존 누적 데이터입니다. [시간대별 분석 & 정리] 탭에서 수업 일시별로 확인하거나 우측 상단 [일괄 정리]를 통해 정리하실 수 있습니다.<br />
+                • <strong>신규 회차 세션</strong>: 교사 화면에서 각 회차별(1회차, 2회차 등) 링크를 생성하여 학생들이 입장하면 해당 세션 ID로 데이터가 완벽히 독립되어 이곳에 자동으로 카드 형태로 등록됩니다.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
               {stats.sessionList.map(session => (
                 <div
                   key={session.id}
@@ -914,6 +965,7 @@ export default function SuperAdminModal({ onClose, user }) {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
 
