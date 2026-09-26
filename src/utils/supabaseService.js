@@ -61,6 +61,21 @@ export async function copyToClipboard(text) {
   }
 }
 
+// Helper to embed sessionId in feature text for zero-schema loss
+export function encodeSessionInFeature(featureText, sessionId) {
+  const clean = (featureText || '').replace(/<!--SID:.*?-->/g, '').trim();
+  return `${clean}\n<!--SID:${sessionId || '1'}-->`;
+}
+
+// Helper to extract embedded sessionId from feature text
+export function decodeSessionFromFeature(rawFeature, fallbackSessionId = '1') {
+  if (!rawFeature) return { sessionId: fallbackSessionId, featureText: '' };
+  const match = String(rawFeature).match(/<!--SID:(.*?)-->/);
+  const sessionId = match && match[1] ? match[1] : fallbackSessionId;
+  const clean = String(rawFeature).replace(/<!--SID:.*?-->/g, '').trim();
+  return { sessionId, featureText: clean };
+}
+
 // Global shared broadcast channel for submissions
 let submissionChannel = null;
 
@@ -122,14 +137,18 @@ export async function saveQuizSubmission({
   answerFeature,
   score = 100
 }) {
+  const sid = String(sessionId || '1');
+  const cleanFeature = (answerFeature || '').replace(/<!--SID:.*?-->/g, '').trim();
+  const embeddedFeature = encodeSessionInFeature(cleanFeature, sid);
+
   const newSubmission = {
     id: 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-    session_id: String(sessionId || '1'),
+    session_id: sid,
     location_id: locationId,
     location_title: locationTitle,
     student_name: studentName,
     answer_name: answerName,
-    answer_feature: answerFeature,
+    answer_feature: cleanFeature,
     score: score,
     created_at: new Date().toISOString()
   };
@@ -149,12 +168,12 @@ export async function saveQuizSubmission({
   try {
     // 1st attempt: insert with session_id
     const payloadWithSession = {
-      session_id: String(sessionId || '1'),
+      session_id: sid,
       location_id: locationId,
       location_title: locationTitle,
       student_name: studentName,
       answer_name: answerName,
-      answer_feature: answerFeature,
+      answer_feature: embeddedFeature,
       score: score,
       created_at: newSubmission.created_at
     };
@@ -166,13 +185,12 @@ export async function saveQuizSubmission({
 
     // Fallback if Supabase schema does not yet have session_id column
     if (error && (error.message?.includes('session_id') || error.code === 'PGRST204')) {
-      console.warn('Supabase에 session_id 컬럼이 없어 제외 후 저장 시도:', error.message);
       const payloadWithoutSession = {
         location_id: locationId,
         location_title: locationTitle,
         student_name: studentName,
         answer_name: answerName,
-        answer_feature: answerFeature,
+        answer_feature: embeddedFeature,
         score: score,
         created_at: newSubmission.created_at
       };
@@ -190,10 +208,18 @@ export async function saveQuizSubmission({
     }
 
     const resultData = (data && data.length > 0)
-      ? data.map(d => ({ ...newSubmission, ...d, session_id: String(d.session_id || sessionId || '1') }))
+      ? data.map(d => {
+          const { sessionId: decodedSid, featureText } = decodeSessionFromFeature(d.answer_feature, sid);
+          return {
+            ...newSubmission,
+            ...d,
+            session_id: String(d.session_id || decodedSid || sid),
+            answer_feature: featureText || cleanFeature
+          };
+        })
       : [newSubmission];
 
-    // Re-broadcast enriched result if needed
+    // Re-broadcast enriched result
     if (resultData[0]) {
       broadcastSubmission(resultData[0]);
     }
@@ -214,17 +240,21 @@ export async function saveBatchSubmissions(submissionsList = [], user = null) {
   }
 
   const ns = getUserNamespace(user);
-  const formatted = submissionsList.map((item, idx) => ({
-    id: item.id || `local_imp_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
-    session_id: String(item.sessionId || item.session_id || '1'),
-    location_id: item.locationId || item.location_id || 'loc_unknown',
-    location_title: item.locationTitle || item.location_title || '',
-    student_name: item.studentName || item.student_name || '익명 학생',
-    answer_name: item.answerName || item.answer_name || '',
-    answer_feature: item.answerFeature || item.answer_feature || '',
-    score: item.score || 100,
-    created_at: item.createdAt || item.created_at || new Date().toISOString()
-  }));
+  const formatted = submissionsList.map((item, idx) => {
+    const sid = String(item.sessionId || item.session_id || '1');
+    const cleanFeature = (item.answerFeature || item.answer_feature || '').replace(/<!--SID:.*?-->/g, '').trim();
+    return {
+      id: item.id || `local_imp_${Date.now()}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+      session_id: sid,
+      location_id: item.locationId || item.location_id || 'loc_unknown',
+      location_title: item.locationTitle || item.location_title || '',
+      student_name: item.studentName || item.student_name || '익명 학생',
+      answer_name: item.answerName || item.answer_name || '',
+      answer_feature: cleanFeature,
+      score: item.score || 100,
+      created_at: item.createdAt || item.created_at || new Date().toISOString()
+    };
+  });
 
   // 1. Update local cache
   try {
@@ -244,16 +274,17 @@ export async function saveBatchSubmissions(submissionsList = [], user = null) {
       location_title: f.location_title,
       student_name: f.student_name,
       answer_name: f.answer_name,
-      answer_feature: f.answer_feature,
+      answer_feature: encodeSessionInFeature(f.answer_feature, f.session_id),
       score: f.score,
       created_at: f.created_at
     }));
 
     for (let i = 0; i < payloads.length; i += 50) {
       const chunk = payloads.slice(i, i + 50);
-      const { error } = await supabase.from('quiz_submissions').insert(chunk);
-      if (error) {
-        console.warn('Supabase batch insert error chunk:', error.message);
+      let { error } = await supabase.from('quiz_submissions').insert(chunk);
+      if (error && (error.message?.includes('session_id') || error.code === 'PGRST204')) {
+        const chunkWithoutSid = chunk.map(({ session_id, ...rest }) => rest);
+        await supabase.from('quiz_submissions').insert(chunkWithoutSid);
       }
     }
   } catch (err) {
@@ -284,10 +315,9 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     
     const sid = String(item.session_id || '1');
     
-    // If allowedSessionIds are specified, filter out non-matching sessions
+    // If allowedSessionIds are specified, filter matching sessions
     if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
       const allowedSet = new Set(allowedSessionIds.map(String));
-      // Include '1' or missing session_id if first session '1' is allowed
       if (!allowedSet.has(sid) && !(allowedSet.has('1') && (!item.session_id || item.session_id === '1'))) {
         return false;
       }
@@ -304,49 +334,31 @@ export async function fetchAllSubmissions({ limit = 500, allowedSessionIds = nul
     return true;
   };
 
-  let remoteData = [];
+  let rawRemoteData = [];
   try {
-    // 1st attempt: Query with in filter
-    let query = supabase
+    const res = await supabase
       .from('quiz_submissions')
       .select('*')
       .neq('location_id', '__session_config__')
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (allowedSessionIds && Array.isArray(allowedSessionIds) && allowedSessionIds.length > 0) {
-      query = query.in('session_id', allowedSessionIds.map(String));
-    }
-
-    const res = await query;
-
     if (!res.error && Array.isArray(res.data)) {
-      remoteData = res.data;
-    } else {
-      // Fallback: If session_id in query failed (e.g. column does not exist or schema issue), query all without session_id filter
-      const fallbackRes = await supabase
-        .from('quiz_submissions')
-        .select('*')
-        .neq('location_id', '__session_config__')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
-        remoteData = fallbackRes.data;
-      }
+      rawRemoteData = res.data;
     }
   } catch (err) {
     console.warn('Supabase 조회 실패, 로컬 캐시를 조회합니다:', err);
-    try {
-      const fallback = await supabase
-        .from('quiz_submissions')
-        .select('*')
-        .neq('location_id', '__session_config__')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      if (fallback.data) remoteData = fallback.data;
-    } catch (e) {}
   }
+
+  // Parse and decode embedded sessionId from rawRemoteData
+  const remoteData = rawRemoteData.map(item => {
+    const { sessionId: decodedSid, featureText } = decodeSessionFromFeature(item.answer_feature, item.session_id || '1');
+    return {
+      ...item,
+      session_id: String(item.session_id || decodedSid || '1'),
+      answer_feature: featureText || item.answer_feature
+    };
+  });
 
   // Load from local storage (both user-namespaced and general)
   let localData = [];
