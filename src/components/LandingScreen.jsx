@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../utils/supabaseService';
 import { sound } from '../utils/audio';
-import { LogIn, Sparkles, User, Hash, School, ShieldCheck, HelpCircle } from 'lucide-react';
+import { LogIn, Sparkles, User, Hash, School, ShieldCheck } from 'lucide-react';
 
 export default function LandingScreen({
   isStudentSession = false,
@@ -432,29 +432,6 @@ export default function LandingScreen({
                 </svg>
                 <span>구글 계정으로 교사 로그인</span>
               </button>
-
-              {/* Student Guide Note */}
-              <div
-                style={{
-                  background: '#242424',
-                  border: '1px solid #333333',
-                  borderRadius: '12px',
-                  padding: '0.9rem 1.1rem',
-                  fontSize: '0.84rem',
-                  color: '#a1a1aa',
-                  lineHeight: 1.5,
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  marginTop: '0.5rem'
-                }}
-              >
-                <HelpCircle size={16} color="#1ed760" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>
-                  <strong style={{ color: '#ffffff' }}>학생 참여 안내:</strong> 학생은 교사가 개설한 수업 링크를 통해서만 접속할 수 있습니다.
-                </span>
-              </div>
             </div>
           </>
         )}
