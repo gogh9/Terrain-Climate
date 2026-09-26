@@ -697,16 +697,9 @@ export default function QuizModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* Step 1: Main Climate Selection */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                          사진 지역의 기후로 알맞은 것은 다음 중 어느 것입니까?
-                        </label>
-                        {selectedClimateMain && (
-                          <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
-                            ✓ {selectedClimateMain} 선택됨
-                          </span>
-                        )}
-                      </div>
+                      <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff', display: 'block', marginBottom: '8px' }}>
+                        사진 지역의 기후로 알맞은 것은 다음 중 어느 것입니까?
+                      </label>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                         {CLIMATE_MAIN_CHOICES.map((opt) => {
                           const isSelected = selectedClimateMain === opt.label;
@@ -774,16 +767,9 @@ export default function QuizModal({
                         padding: '12px 14px',
                         animation: 'fadeIn 0.2s ease'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span>👉 다음에서 사진의 기후로 알맞은 것을 고르시오.</span>
-                          </label>
-                          {selectedClimateSub && (
-                            <span style={{ fontSize: '0.78rem', background: '#1ed760', color: '#000000', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
-                              {selectedClimateMain} &gt; {selectedClimateSub}
-                            </span>
-                          )}
-                        </div>
+                        <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'block', marginBottom: '8px' }}>
+                          👉 다음에서 사진의 기후로 알맞은 것을 고르시오.
+                        </label>
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {CLIMATE_SUB_CHOICES[selectedClimateMain].map((subOpt) => {
@@ -847,16 +833,9 @@ export default function QuizModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {/* Step 1: Main Landform Selection */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                          사진의 지역에서 확인할 수 있는 지형으로 알맞은 것은 다음 중 어느 것입니까?
-                        </label>
-                        {selectedMainType && (
-                          <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
-                            ✓ {selectedMainType} 선택됨
-                          </span>
-                        )}
-                      </div>
+                      <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff', display: 'block', marginBottom: '8px' }}>
+                        사진의 지역에서 확인할 수 있는 지형으로 알맞은 것은 다음 중 어느 것입니까?
+                      </label>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                         {LANDFORM_MAIN_CHOICES.map((opt) => {
                           const isSelected = selectedMainType === opt.label;
@@ -924,16 +903,9 @@ export default function QuizModal({
                         padding: '12px 14px',
                         animation: 'fadeIn 0.2s ease'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span>👉 다음에서 사진의 지형으로 알맞은 것을 고르시오.</span>
-                          </label>
-                          {selectedSubType && (
-                            <span style={{ fontSize: '0.78rem', background: '#1ed760', color: '#000000', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
-                              {selectedMainType} &gt; {selectedSubType}
-                            </span>
-                          )}
-                        </div>
+                        <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'block', marginBottom: '8px' }}>
+                          👉 다음에서 사진의 지형으로 알맞은 것을 고르시오.
+                        </label>
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {LANDFORM_SUB_CHOICES[selectedMainType].map((subOpt) => {
