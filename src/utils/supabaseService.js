@@ -61,7 +61,6 @@ export async function copyToClipboard(text) {
   }
 }
 
-/**
 // Global shared broadcast channel for submissions
 let submissionChannel = null;
 
