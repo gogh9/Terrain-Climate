@@ -531,10 +531,13 @@ export default function App() {
         onOpenTeacherDashboard={() => {
           if (user) {
             setActiveView('workspace');
+            setSessionParam(null);
             try {
               localStorage.setItem('geo_active_view', 'workspace');
-              window.history.replaceState(null, '', window.location.pathname);
-            } catch (e) {}
+              window.location.href = window.location.pathname;
+            } catch (e) {
+              window.location.href = '/';
+            }
           } else {
             setShowTeacherDashboard(true);
           }
