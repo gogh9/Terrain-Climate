@@ -731,6 +731,10 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     });
   };
 
+  // Super Admin Check (gogh9@susaek.sen.es.kr)
+  const SUPER_ADMIN_EMAIL = 'gogh9@susaek.sen.es.kr';
+  const isSuperAdmin = Boolean(user?.email && user.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
+
   // Copy Student Distribution Link
   const handleCopyLink = async (session) => {
     sound.playClick();
@@ -745,23 +749,42 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  // Reset Submissions for Session
-  const handleResetSession = async (sessionId) => {
-    if (!window.confirm('이 지도의 수집된 모든 데이터 제출을 초기화하시겠습니까?')) return;
+  // Delete all submissions of a student (이름 클릭 또는 휴지통 클릭 시)
+  const handleDeleteStudent = async (studentName, studentSubs = {}) => {
+    const subList = Object.values(studentSubs);
+    if (subList.length === 0) {
+      alert(`'${studentName}' 학생의 제출 데이터가 없습니다.`);
+      return;
+    }
+    const countStr = subList.length > 0 ? ` (${subList.length}개 답안)` : '';
+    if (!window.confirm(`'${studentName}' 학생의 모든 제출 기록${countStr}을 삭제하시겠습니까?`)) return;
+    sound.playClick();
+    for (const s of subList) {
+      await deleteSubmission(s, user);
+    }
+    const delIds = new Set(subList.map(s => s.id));
+    setSubmissions(prev => prev.filter(item => !delIds.has(item.id)));
+    await loadSubmissions();
+    alert(`'${studentName}' 학생의 제출 기록이 삭제되었습니다.`);
+  };
+
+  // Reset Submissions for Session (Supports normal and protected time sessions)
+  const handleResetSession = async (sessionOrId) => {
+    const targetSession = typeof sessionOrId === 'object' && sessionOrId !== null
+      ? sessionOrId
+      : mergedSessions.find(s => String(s.id) === String(sessionOrId)) || { id: sessionOrId };
+
+    const targetSessionId = String(targetSession.id || '1');
+    if (!window.confirm(`'${targetSession.title || '이 지도'}'의 수집된 모든 학생 제출 데이터를 초기화하시겠습니까?`)) return;
     sound.playClick();
 
-    const targetSessionId = String(sessionId || '1');
+    const toDelete = getSubmissionsForSession(targetSession, submissions);
+    const deleteIds = new Set(toDelete.map(s => s.id));
 
     // 1. Immediately filter out from React state for zero UI latency
-    setSubmissions(prev => prev.filter(sub => {
-      const sid = String(sub.session_id || '');
-      return sid !== targetSessionId;
-    }));
+    setSubmissions(prev => prev.filter(sub => !deleteIds.has(sub.id) && String(sub.session_id || '') !== targetSessionId));
 
     // 2. Perform comprehensive reset (blacklist IDs + reset timestamp + clear local cache + Supabase delete)
-    const toDelete = submissions.filter(sub => {
-      return String(sub.session_id || '') === targetSessionId;
-    });
     await resetSessionSubmissions(targetSessionId, toDelete, user);
 
     // 3. Reset access count in session state
@@ -772,15 +795,33 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
     alert('초기화되었습니다.');
   };
 
-  // Delete Session Card (삭제 후 남은 세션들을 순서대로 1,2,3회로 자동 재부여)
-  const handleDeleteSession = (sessionId) => {
-    if (sessions.length <= 1) {
+  // Delete Session Card (Protected sessions can be deleted by super admin gogh9@susaek.sen.es.kr)
+  const handleDeleteSession = async (sessionOrId) => {
+    const targetSession = typeof sessionOrId === 'object' && sessionOrId !== null
+      ? sessionOrId
+      : mergedSessions.find(s => String(s.id) === String(sessionOrId)) || { id: sessionOrId };
+
+    const strId = String(targetSession.id);
+
+    if (mergedSessions.length <= 1) {
       alert('최소 1개의 지도는 유지되어야 합니다.');
       return;
     }
-    if (!window.confirm('이 지도를 삭제하시겠습니까?')) return;
+    const confirmMsg = targetSession.isProtected
+      ? `'${targetSession.title || '보존 세션'}'을 삭제하시겠습니까?\n\n(※ 관리자 권한으로 삭제되며 해당 시간대의 모든 제출 데이터가 영구 삭제됩니다.)`
+      : `'${targetSession.title || '이 지도'}'를 삭제하시겠습니까?`;
+    if (!window.confirm(confirmMsg)) return;
     sound.playClick();
-    const strId = String(sessionId);
+
+    // If it's a protected time session or has submissions, delete those submissions so it doesn't re-appear
+    if (targetSession.timeGroupKey || targetSession.isProtected) {
+      const toDelete = getSubmissionsForSession(targetSession, submissions);
+      for (const s of toDelete) {
+        await deleteSubmission(s, user);
+      }
+      const deleteIds = new Set(toDelete.map(s => s.id));
+      setSubmissions(prev => prev.filter(sub => !deleteIds.has(sub.id)));
+    }
 
     setSessions(prev => {
       const remaining = prev.filter(s => String(s.id) !== strId);
@@ -790,6 +831,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
       }
       return renumbered;
     });
+
+    await loadSubmissions();
+    alert('지도가 삭제되었습니다.');
   };
 
   // Merge user custom sessions with discovered protected time group sessions
@@ -1432,9 +1476,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                   </div>
                 </div>
 
-                {/* Card Top Right: Reset and Delete Buttons (Protected for Time Group Sessions) */}
+                {/* Card Top Right: Reset and Delete Buttons (Protected for Time Group Sessions, editable/deletable by super admin gogh9@susaek.sen.es.kr) */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                  {session.isProtected ? (
+                  {session.isProtected && !isSuperAdmin ? (
                     <span style={{
                       background: 'rgba(56, 189, 248, 0.12)',
                       color: '#38bdf8',
@@ -1454,8 +1498,27 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     </span>
                   ) : (
                     <>
+                      {session.isProtected && isSuperAdmin && (
+                        <span style={{
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          padding: '5px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          lineHeight: 1
+                        }} title="관리자(gogh9@susaek.sen.es.kr) 권한으로 삭제 및 초기화 가능">
+                          <Shield size={11} /> 관리자 보존
+                        </span>
+                      )}
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleResetSession(session.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleResetSession(session); }}
                         style={{
                           background: '#222222',
                           color: '#ffa42b',
@@ -1481,7 +1544,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                       </button>
 
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSession(session); }}
                         style={{
                           background: '#222222',
                           color: '#f3727f',
@@ -2066,7 +2129,33 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                           <td style={{ padding: '8px 2px', textAlign: 'center', fontWeight: 800, color: '#ffffff', fontSize: '0.82rem' }}>
                             {parsed.studentNum ? `${parsed.studentNum}` : '-'}
                           </td>
-                          <td style={{ padding: '8px 4px', textAlign: 'center', fontWeight: 900, color: '#1ed760', borderRight: '2px solid #2d2d2d', fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <td
+                            onClick={() => handleDeleteStudent(studentName, studentSubs)}
+                            title={`클릭하여 '${studentName}' 학생의 기록을 삭제합니다.`}
+                            style={{
+                              padding: '8px 4px',
+                              textAlign: 'center',
+                              fontWeight: 900,
+                              color: '#1ed760',
+                              borderRight: '2px solid #2d2d2d',
+                              fontSize: '0.84rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = '#f3727f';
+                              e.currentTarget.style.textDecoration = 'underline';
+                              e.currentTarget.style.backgroundColor = 'rgba(243, 114, 127, 0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#1ed760';
+                              e.currentTarget.style.textDecoration = 'none';
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
                             {parsed.name}
                           </td>
                           {activeColumns.map(col => {
@@ -2248,8 +2337,34 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                         {parsed.studentNum ? `${parsed.studentNum}` : '-'}
                       </td>
 
-                      {/* 이름 */}
-                      <td style={{ padding: '8px 4px', textAlign: 'center', fontWeight: 900, color: '#1ed760', borderRight: '2px solid #2d2d2d', fontSize: '0.84rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {/* 이름 (클릭 시 해당 학생 제출 기록 삭제) */}
+                      <td
+                        onClick={() => handleDeleteStudent(studentName, studentSubs)}
+                        title={`클릭하여 '${studentName}' 학생의 기록을 삭제합니다.`}
+                        style={{
+                          padding: '8px 4px',
+                          textAlign: 'center',
+                          fontWeight: 900,
+                          color: '#1ed760',
+                          borderRight: '2px solid #2d2d2d',
+                          fontSize: '0.84rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#f3727f';
+                          e.currentTarget.style.textDecoration = 'underline';
+                          e.currentTarget.style.backgroundColor = 'rgba(243, 114, 127, 0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#1ed760';
+                          e.currentTarget.style.textDecoration = 'none';
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
                         {parsed.name}
                       </td>
 

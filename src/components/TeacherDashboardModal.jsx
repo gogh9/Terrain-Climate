@@ -297,7 +297,19 @@ export default function TeacherDashboardModal({ onClose, locations = [], user = 
                       <td style={{ padding: '10px 14px', color: '#71717a', fontWeight: 700 }}>
                         {filteredSubmissions.length - index}
                       </td>
-                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1ed760' }}>
+                      <td
+                        onClick={() => handleDelete(sub)}
+                        title={`클릭하여 '${sub.student_name || '이'}' 학생의 제출 항목 삭제`}
+                        style={{
+                          padding: '10px 14px',
+                          fontWeight: 700,
+                          color: '#1ed760',
+                          cursor: 'pointer',
+                          transition: 'color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = '#f3727f'; e.currentTarget.style.textDecoration = 'underline'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = '#1ed760'; e.currentTarget.style.textDecoration = 'none'; }}
+                      >
                         👤 {sub.student_name || '익명 학생'}
                       </td>
                       <td style={{ padding: '10px 14px', fontWeight: 700, color: '#ffffff' }}>
