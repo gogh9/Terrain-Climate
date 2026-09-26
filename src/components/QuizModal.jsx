@@ -4,12 +4,37 @@ import confetti from 'canvas-confetti';
 import { sound, speakText, stopSpeech } from '../utils/audio';
 import { saveQuizSubmission } from '../utils/supabaseService';
 
-export const LANDFORM_CHOICES = [
+// 지형 대분류 선택지 (1단계)
+export const LANDFORM_MAIN_CHOICES = [
   { label: '산', icon: '⛰️' },
-  { label: '사막', icon: '🏜️' },
-  { label: '초원', icon: '🌾' },
   { label: '하천', icon: '🌊' },
   { label: '해안', icon: '🏖️' }
+];
+
+// 지형 하부 요소 세부 선택지 (2단계)
+export const LANDFORM_SUB_CHOICES = {
+  '산': [
+    { label: '산맥', icon: '🏔️' },
+    { label: '고원', icon: '⛰️' },
+    { label: '화산', icon: '🌋' }
+  ],
+  '하천': [
+    { label: '폭포', icon: '💦' },
+    { label: '강', icon: '🌊' },
+    { label: '호수', icon: '🏞️' }
+  ],
+  '해안': [
+    { label: '피오르', icon: '🏔️🌊' },
+    { label: '갯벌', icon: '🦀' },
+    { label: '모래 해안', icon: '🏖️' },
+    { label: '암석 해안', icon: '🪨' },
+    { label: '산호 해안', icon: '🪸' }
+  ]
+};
+
+// 하위 호환용 단일 배열
+export const LANDFORM_CHOICES = [
+  ...LANDFORM_MAIN_CHOICES
 ];
 
 export const CLIMATE_CHOICES = [
@@ -42,27 +67,53 @@ export default function QuizModal({
       setActiveTab('quiz');
     }
   }, [canExplore, activeTab]);
+
   const [studentName, setStudentName] = useState(() => {
     if (studentUser?.fullName) return studentUser.fullName;
     if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
     if (user?.email) return user.email.split('@')[0];
     return localStorage.getItem('geo_last_student_name') || '';
   });
-  const [inputName, setInputName] = useState(() => {
+
+  // 지형 대분류 선택 상태
+  const [selectedMainType, setSelectedMainType] = useState(() => {
+    if (location.category === 'climate') return '';
     const prev = previousAnswer?.name || '';
     if (!prev) return '';
-    if (location.category === 'climate') {
-      const found = CLIMATE_CHOICES.find(c => prev.includes(c.label.slice(0, 2)));
-      return found ? found.label : prev;
-    } else {
-      if (prev.includes('산') || prev.includes('고원')) return '산';
-      if (prev.includes('하천') || prev.includes('강') || prev.includes('호수') || prev.includes('폭포')) return '하천';
-      if (prev.includes('해안') || prev.includes('해변')) return '해안';
-      if (prev.includes('사막')) return '사막';
-      if (prev.includes('초원')) return '초원';
-      return prev;
-    }
+    if (prev.includes('산맥') || prev.includes('고원') || prev.includes('화산') || prev === '산' || prev.startsWith('산')) return '산';
+    if (prev.includes('강') || prev.includes('호수') || prev.includes('폭포') || prev === '하천' || prev.startsWith('하천')) return '하천';
+    if (prev.includes('피오르') || prev.includes('갯벌') || prev.includes('해안') || prev.includes('해변') || prev.includes('산호') || prev.includes('암석') || prev.includes('모래')) return '해안';
+    return '';
   });
+
+  // 지형 하부 요소(세부 지형) 선택 상태
+  const [selectedSubType, setSelectedSubType] = useState(() => {
+    if (location.category === 'climate') return '';
+    const prev = previousAnswer?.name || '';
+    if (!prev) return '';
+    if (prev.includes('산맥')) return '산맥';
+    if (prev.includes('고원')) return '고원';
+    if (prev.includes('화산')) return '화산';
+    if (prev.includes('폭포')) return '폭포';
+    if (prev.includes('강')) return '강';
+    if (prev.includes('호수')) return '호수';
+    if (prev.includes('피오르')) return '피오르';
+    if (prev.includes('갯벌')) return '갯벌';
+    if (prev.includes('산호')) return '산호 해안';
+    if (prev.includes('암석') || prev.includes('바위')) return '암석 해안';
+    if (prev.includes('모래') || prev.includes('해변')) return '모래 해안';
+    return '';
+  });
+
+  // 기후 선택 상태
+  const [selectedClimate, setSelectedClimate] = useState(() => {
+    if (location.category !== 'climate') return '';
+    const prev = previousAnswer?.name || '';
+    if (!prev) return '';
+    const found = CLIMATE_CHOICES.find(c => prev.includes(c.label.slice(0, 2)));
+    return found ? found.label : prev;
+  });
+
   const [inputFeature, setInputFeature] = useState(previousAnswer?.feature || '');
   const [feedback, setFeedback] = useState(isAlreadyCompleted ? { isSuccess: true, score: 100, message: '🎉 이미 학습 확인을 완료한 지점입니다.' } : null);
   const [showHint, setShowHint] = useState(false);
@@ -105,16 +156,22 @@ export default function QuizModal({
       return;
     }
     const effectiveStudentName = studentUser?.fullName || studentName?.trim() || localStorage.getItem('geo_last_student_name') || '익명 학생';
-
-    const cleanName = inputName.trim();
     const cleanFeature = inputFeature.trim();
 
-    if (!cleanName) {
-      alert(location.category === 'climate' 
-        ? '이 지역에 나타나는 기후를 선택해 주세요!' 
-        : '이 지역에서 볼 수 있는 지형을 선택해 주세요!'
-      );
-      return;
+    if (location.category === 'climate') {
+      if (!selectedClimate) {
+        alert('이 지역에 나타나는 기후를 선택해 주세요!');
+        return;
+      }
+    } else {
+      if (!selectedMainType) {
+        alert('이 지역에서 볼 수 있는 지형(대분류)을 먼저 선택해 주세요!');
+        return;
+      }
+      if (!selectedSubType) {
+        alert(`'${selectedMainType}'의 세부 지형(하부 요소)을 선택해 주세요!`);
+        return;
+      }
     }
 
     if (!cleanFeature) {
@@ -130,8 +187,15 @@ export default function QuizModal({
     sound.playClick();
     localStorage.setItem('geo_last_student_name', effectiveStudentName);
 
+    const cleanName = location.category === 'climate'
+      ? selectedClimate
+      : `${selectedMainType} - ${selectedSubType}`;
+
     // 1. Name Check (지형 or 기후 선택지 정답 검사)
     let isNameCorrect = false;
+    let isMainCorrect = false;
+    let isSubCorrect = false;
+
     if (location.category === 'climate') {
       if (location.subType && cleanName === location.subType) {
         isNameCorrect = true;
@@ -147,26 +211,24 @@ export default function QuizModal({
         });
       }
     } else {
-      let expected = '산';
-      if (location.subType === '산지') expected = '산';
-      else if (location.subType === '하천') expected = '하천';
-      else if (location.subType === '해안') expected = '해안';
-      else if (location.subType === '사막') expected = '사막';
-      else if (location.subType === '초원') expected = '초원';
+      const expMain = location.mainType || (['산맥', '고원', '화산', '산지'].includes(location.subType) ? '산' : (['하천', '강', '호수', '폭포'].includes(location.subType) ? '하천' : '해안'));
+      const expSub = location.subType || '';
 
-      if (cleanName === expected) {
-        isNameCorrect = true;
-      } else {
-        const nameKeywords = [
-          ...(location.nameKeywords || []),
-          ...(location.subType ? [location.subType, location.subType.replace(/\s+/g, '')] : [])
-        ];
-        isNameCorrect = nameKeywords.some(kw => {
-          const normKw = kw.replace(/\s+/g, '').toLowerCase();
-          const normInput = cleanName.replace(/\s+/g, '').toLowerCase();
-          return normInput.includes(normKw) || normKw.includes(normInput);
-        });
-      }
+      isMainCorrect = selectedMainType === expMain;
+      isSubCorrect = selectedSubType === expSub ||
+        (expSub.includes('산맥') && selectedSubType === '산맥') ||
+        (expSub.includes('고원') && selectedSubType === '고원') ||
+        (expSub.includes('화산') && selectedSubType === '화산') ||
+        (expSub.includes('강') && selectedSubType === '강') ||
+        (expSub.includes('호수') && selectedSubType === '호수') ||
+        (expSub.includes('폭포') && selectedSubType === '폭포') ||
+        (expSub.includes('피오르') && selectedSubType === '피오르') ||
+        (expSub.includes('갯벌') && selectedSubType === '갯벌') ||
+        (expSub.includes('산호') && selectedSubType.includes('산호')) ||
+        (expSub.includes('암석') && selectedSubType.includes('암석')) ||
+        (expSub.includes('모래') && selectedSubType.includes('모래'));
+
+      isNameCorrect = isMainCorrect && isSubCorrect;
     }
 
     // 2. Feature Keywords Check (키워드 2개 이상 매칭 시 인정)
@@ -191,18 +253,26 @@ export default function QuizModal({
       setFeedback({
         isSuccess: true,
         score: 100,
-        message: `🎉 참 잘했어요! ${location.category === 'climate' ? '기후' : '지형'}와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
+        message: location.category === 'climate'
+          ? `🎉 참 잘했어요! 기후(${selectedClimate})와 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`
+          : `🎉 참 잘했어요! 지형(${selectedMainType} > ${selectedSubType})과 핵심 키워드(${matchedFeatureKeywords.join(', ')})를 바르게 작성했습니다.`,
         matchedKeywords: matchedFeatureKeywords
       });
       onComplete(location.id, { name: cleanName, feature: cleanFeature });
     } else if (!isNameCorrect && isFeatureGood) {
       finalScore = 50;
+      let nameHintMsg = '기후를 다시 확인해 보세요.';
+      if (location.category === 'landform') {
+        if (isMainCorrect && !isSubCorrect) {
+          nameHintMsg = `'${selectedMainType}' 지형은 맞았어요! 세부 지형(${selectedSubType})을 다시 확인해 보세요.`;
+        } else {
+          nameHintMsg = `지형의 대분류(${selectedMainType})를 다시 확인해 보세요.`;
+        }
+      }
       setFeedback({
         isSuccess: false,
         score: 50,
-        message: location.category === 'climate' 
-          ? `💡 특징 핵심 키워드는 잘 작성했어요! (${matchedFeatureKeywords.join(', ')}) 기후를 다시 확인해 보세요.` 
-          : `💡 특징 핵심 키워드는 잘 작성했어요! (${matchedFeatureKeywords.join(', ')}) 지형을 다시 확인해 보세요.`,
+        message: `💡 특징 핵심 키워드는 잘 작성했어요! (${matchedFeatureKeywords.join(', ')}) ${nameHintMsg}`,
         matchedKeywords: matchedFeatureKeywords
       });
     } else if (isNameCorrect && !isFeatureGood) {
@@ -544,65 +614,213 @@ export default function QuizModal({
                   </div>
                 )}
 
-                {/* Input 1: Landform or Climate (Clickable Choices) */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>
-                    {location.category === 'climate' ? '이 지역에 나타나는 기후를 선택하세요:' : '이 지역에서 볼 수 있는 지형을 선택하세요:'}
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(location.category === 'climate' ? CLIMATE_CHOICES : LANDFORM_CHOICES).map((opt) => {
-                      const isSelected = inputName === opt.label;
-                      return (
-                        <button
-                          key={opt.label}
-                          type="button"
-                          disabled={!isInputAllowed}
-                          onClick={() => {
-                            if (!isInputAllowed) return;
-                            sound.playClick();
-                            setInputName(opt.label);
-                          }}
-                          style={{
-                            flex: location.category === 'climate' ? '1 1 calc(33.333% - 8px)' : '1 1 calc(20% - 8px)',
-                            minWidth: location.category === 'climate' ? '110px' : '65px',
-                            padding: '0.75rem 0.5rem',
-                            background: isSelected ? '#1ed760' : '#1f1f1f',
-                            color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
-                            border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
-                            borderRadius: '12px',
-                            fontSize: '0.92rem',
-                            fontWeight: isSelected ? 800 : 600,
-                            cursor: isInputAllowed ? 'pointer' : 'not-allowed',
-                            opacity: isInputAllowed ? 1 : 0.6,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
-                            transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (isInputAllowed && !isSelected) {
-                              e.currentTarget.style.borderColor = '#1ed760';
-                              e.currentTarget.style.background = '#282828';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (isInputAllowed && !isSelected) {
-                              e.currentTarget.style.borderColor = '#404040';
-                              e.currentTarget.style.background = '#1f1f1f';
-                            }
-                          }}
-                        >
-                          <span style={{ fontSize: '1.1rem' }}>{opt.icon}</span>
-                          <span>{opt.label}</span>
-                          {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
-                        </button>
-                      );
-                    })}
+                {/* Input 1: Landform (Hierarchical) or Climate (Clickable Choices) */}
+                {location.category === 'climate' ? (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '1rem', fontWeight: 700, color: '#ffffff', marginBottom: '10px' }}>
+                      이 지역에 나타나는 기후를 선택하세요:
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {CLIMATE_CHOICES.map((opt) => {
+                        const isSelected = selectedClimate === opt.label;
+                        return (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            disabled={!isInputAllowed}
+                            onClick={() => {
+                              if (!isInputAllowed) return;
+                              sound.playClick();
+                              setSelectedClimate(opt.label);
+                            }}
+                            style={{
+                              flex: '1 1 calc(33.333% - 8px)',
+                              minWidth: '110px',
+                              padding: '0.75rem 0.5rem',
+                              background: isSelected ? '#1ed760' : '#1f1f1f',
+                              color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
+                              border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
+                              borderRadius: '12px',
+                              fontSize: '0.92rem',
+                              fontWeight: isSelected ? 800 : 600,
+                              cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                              opacity: isInputAllowed ? 1 : 0.6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
+                              transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (isInputAllowed && !isSelected) {
+                                e.currentTarget.style.borderColor = '#1ed760';
+                                e.currentTarget.style.background = '#282828';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (isInputAllowed && !isSelected) {
+                                e.currentTarget.style.borderColor = '#404040';
+                                e.currentTarget.style.background = '#1f1f1f';
+                              }
+                            }}
+                          >
+                            <span style={{ fontSize: '1.1rem' }}>{opt.icon}</span>
+                            <span>{opt.label}</span>
+                            {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Step 1: Main Landform Selection */}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                          1단계: 지형의 큰 종류(대분류)를 선택하세요
+                        </label>
+                        {selectedMainType && (
+                          <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
+                            ✓ {selectedMainType} 선택됨
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                        {LANDFORM_MAIN_CHOICES.map((opt) => {
+                          const isSelected = selectedMainType === opt.label;
+                          return (
+                            <button
+                              key={opt.label}
+                              type="button"
+                              disabled={!isInputAllowed}
+                              onClick={() => {
+                                if (!isInputAllowed) return;
+                                sound.playClick();
+                                if (selectedMainType !== opt.label) {
+                                  setSelectedMainType(opt.label);
+                                  setSelectedSubType('');
+                                }
+                              }}
+                              style={{
+                                padding: '0.8rem 0.5rem',
+                                background: isSelected ? '#1ed760' : '#1f1f1f',
+                                color: isSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
+                                border: isSelected ? '2px solid #1ed760' : '1px solid #404040',
+                                borderRadius: '12px',
+                                fontSize: '1rem',
+                                fontWeight: isSelected ? 900 : 700,
+                                cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                                opacity: isInputAllowed ? 1 : 0.6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                boxShadow: isSelected ? '0 4px 14px rgba(30, 215, 96, 0.35)' : 'none',
+                                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isInputAllowed && !isSelected) {
+                                  e.currentTarget.style.borderColor = '#1ed760';
+                                  e.currentTarget.style.background = '#282828';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (isInputAllowed && !isSelected) {
+                                  e.currentTarget.style.borderColor = '#404040';
+                                  e.currentTarget.style.background = '#1f1f1f';
+                                }
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem' }}>{opt.icon}</span>
+                              <span>{opt.label}</span>
+                              {isSelected && <span style={{ fontSize: '0.9rem', fontWeight: 900 }}>✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Step 2: Sub-element Selection (Appears when Main Landform is selected) */}
+                    {selectedMainType && LANDFORM_SUB_CHOICES[selectedMainType] && (
+                      <div style={{
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        borderRadius: '14px',
+                        padding: '12px 14px',
+                        animation: 'fadeIn 0.2s ease'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span>👉 2단계: '{selectedMainType}'의 세부 지형(하부 요소)을 선택하세요:</span>
+                          </label>
+                          {selectedSubType && (
+                            <span style={{ fontSize: '0.78rem', background: '#1ed760', color: '#000000', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
+                              {selectedMainType} &gt; {selectedSubType}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {LANDFORM_SUB_CHOICES[selectedMainType].map((subOpt) => {
+                            const isSubSelected = selectedSubType === subOpt.label;
+                            return (
+                              <button
+                                key={subOpt.label}
+                                type="button"
+                                disabled={!isInputAllowed}
+                                onClick={() => {
+                                  if (!isInputAllowed) return;
+                                  sound.playClick();
+                                  setSelectedSubType(subOpt.label);
+                                }}
+                                style={{
+                                  flex: '1 1 calc(33.333% - 8px)',
+                                  minWidth: '90px',
+                                  padding: '0.7rem 0.6rem',
+                                  background: isSubSelected ? '#38bdf8' : '#181818',
+                                  color: isSubSelected ? '#000000' : (isInputAllowed ? '#ffffff' : '#666666'),
+                                  border: isSubSelected ? '2px solid #38bdf8' : '1px solid #383838',
+                                  borderRadius: '10px',
+                                  fontSize: '0.9rem',
+                                  fontWeight: isSubSelected ? 900 : 700,
+                                  cursor: isInputAllowed ? 'pointer' : 'not-allowed',
+                                  opacity: isInputAllowed ? 1 : 0.6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '6px',
+                                  boxShadow: isSubSelected ? '0 4px 14px rgba(56, 189, 248, 0.35)' : 'none',
+                                  transform: isSubSelected ? 'scale(1.02)' : 'scale(1)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (isInputAllowed && !isSubSelected) {
+                                    e.currentTarget.style.borderColor = '#38bdf8';
+                                    e.currentTarget.style.background = '#222222';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (isInputAllowed && !isSubSelected) {
+                                    e.currentTarget.style.borderColor = '#383838';
+                                    e.currentTarget.style.background = '#181818';
+                                  }
+                                }}
+                              >
+                                <span style={{ fontSize: '1.1rem' }}>{subOpt.icon}</span>
+                                <span>{subOpt.label}</span>
+                                {isSubSelected && <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Input 2: Characteristic Description */}
                 <div>

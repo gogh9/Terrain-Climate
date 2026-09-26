@@ -7,19 +7,21 @@ import SuperAdminModal from './SuperAdminModal';
 
 const ALL_CONTINENTS = ['아시아', '유럽', '아프리카', '북아메리카', '남아메리카', '오세아니아', '극지방'];
 
-// 지형 지점 표준 순서 (총 12개 지점)
+// 지형 지점 표준 순서 (총 14개 지점)
 export const LANDFORM_ORDER = [
-  '스위스 (알프스 산맥)',
+  '스위스(알프스 ○○)',
   '네팔 (히말라야 산맥)',
   '나이지리아 (고원)',
-  '브라질 (아마존강)',
+  '하와이(마우나로아산)',
+  '브라질(아마존○)',
   '베트남·타이 (메콩강·짜오프라야강)',
   '캐나다 (오타와강)',
-  '짐바브웨 (빅토리아 폭포)',
-  '페루 (티티카카호)',
+  '짐바브웨(빅토리아 ○○)',
+  '페루(티티카카○)',
+  '노르웨이(○○○ ○○)',
+  '네덜란드(바덴해 ○○ ○○)',
   '오스트레일리아 (산호 해안)',
   '오스트레일리아 (암석 해안)',
-  '미국 (샌타모니카 모래 해안)',
   '인도네시아 (발리섬 모래 해안)'
 ];
 
@@ -44,7 +46,19 @@ export const normalizeTitle = (title) => {
   if (!title) return '';
   return String(title)
     .replace(/\s*\/\s*/g, ', ')
+    .replace(/스위스\s*\(\s*알프스\s*산맥\s*\)/g, '스위스(알프스 ○○)')
+    .replace(/스위스\s*\(알프스\s*○○\)/g, '스위스(알프스 ○○)')
+    .replace(/브라질\s*\(\s*아마존강\s*\)/g, '브라질(아마존○)')
+    .replace(/브라질\s*\(아마존○\)/g, '브라질(아마존○)')
+    .replace(/짐바브웨\s*\(\s*빅토리아\s*폭포\s*\)/g, '짐바브웨(빅토리아 ○○)')
+    .replace(/짐바브웨\s*\(빅토리아\s*○○\)/g, '짐바브웨(빅토리아 ○○)')
+    .replace(/페루\s*\(\s*티티카카호\s*\)/g, '페루(티티카카○)')
+    .replace(/페루\s*\(\s*티티카카호와\s*\)/g, '페루(티티카카○)')
+    .replace(/페루\s*\(티티카카○\)/g, '페루(티티카카○)')
     .replace(/티티카카호와/g, '티티카카호')
+    .replace(/노르웨이\s*\(○○○\s*○○\)/g, '노르웨이(○○○ ○○)')
+    .replace(/네덜란드\s*\(바덴해\s*○○\s*○○\)/g, '네덜란드(바덴해 ○○ ○○)')
+    .replace(/하와이\s*\(마우나로아산\)/g, '하와이(마우나로아산)')
     .replace(/영국\s*,\s*네덜란드/g, '영국·네덜란드')
     .replace(/네덜란드\s*,\s*영국/g, '영국·네덜란드')
     .replace(/네덜란드·영국/g, '영국·네덜란드')
@@ -1376,7 +1390,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 alignItems: 'center',
                 lineHeight: 1
               }}>
-                {isClimate ? '☀️ 기후 (12개)' : (isAll ? '🌐 전체 (24개)' : '🏔️ 지형 (12개)')}
+                {isClimate ? '☀️ 기후 (12개)' : (isAll ? '🌐 전체 (26개)' : '🏔️ 지형 (14개)')}
               </span>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: '#a1a1aa', flexWrap: 'wrap' }}>
@@ -1506,9 +1520,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
               cursor: 'pointer'
             }}
           >
-            <option value="landform">🏔️ 지형 (12개 지점)</option>
+            <option value="landform">🏔️ 지형 (14개 지점)</option>
             <option value="climate">☀️ 기후 (12개 지점)</option>
-            <option value="all">🌐 전체 (24개 지점)</option>
+            <option value="all">🌐 전체 (26개 지점)</option>
           </select>
         </div>
 
@@ -1977,7 +1991,7 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                 borderRadius: '9999px',
                 border: `1px solid ${activeSession?.categoryFilter === 'climate' ? 'rgba(245, 158, 11, 0.4)' : (activeSession?.categoryFilter === 'all' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(2, 132, 199, 0.4)')}`
               }}>
-                {activeSession?.categoryFilter === 'climate' ? '☀️ 기후 (12개)' : (activeSession?.categoryFilter === 'all' ? '🌐 전체 지형·기후 (24개)' : '🏔️ 지형 (12개)')}
+                {activeSession?.categoryFilter === 'climate' ? '☀️ 기후 (12개)' : (activeSession?.categoryFilter === 'all' ? '🌐 전체 지형·기후 (26개)' : '🏔️ 지형 (14개)')}
               </span>
               <span style={{ background: '#282828', color: '#1ed760', fontSize: '0.78rem', fontWeight: 700, padding: '3px 10px', borderRadius: '9999px' }}>
                 참여 학생 {studentNames.length}명 ({sessionSubmissions.length}개 답안)
@@ -2173,9 +2187,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     gap: '3px',
                     transition: 'all 0.15s ease'
                   }}
-                  title="지형 12개 지점 표 보기"
+                  title="지형 14개 지점 표 보기"
                 >
-                  🏔️ 지형 (12)
+                  🏔️ 지형 (14)
                 </button>
                 <button
                   onClick={() => handleCategoryChange(activeSession.id, 'climate')}
@@ -2213,9 +2227,9 @@ export default function TeacherWorkspace({ user, locations = [], initialSessionI
                     gap: '3px',
                     transition: 'all 0.15s ease'
                   }}
-                  title="지형과 기후 24개 지점 전체 표 보기"
+                  title="지형과 기후 26개 지점 전체 표 보기"
                 >
-                  🌐 전체 (24)
+                  🌐 전체 (26)
                 </button>
               </div>
 
