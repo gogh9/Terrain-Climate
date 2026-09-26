@@ -683,7 +683,7 @@ export default function QuizModal({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                          사진에서 확인할 수 있는 기후는 무엇입니까?
+                          사진 지역의 기후로 알맞은 것은 다음 중 어느 것입니까?
                         </label>
                         {selectedClimateMain && (
                           <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
@@ -829,7 +829,7 @@ export default function QuizModal({
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <label style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                          사진에서 확인할 수 있는 지형은 무엇입니까?
+                          사진의 지역에서 확인할 수 있는 지형으로 알맞은 것은 다음 중 어느 것입니까?
                         </label>
                         {selectedMainType && (
                           <span style={{ fontSize: '0.78rem', color: '#1ed760', fontWeight: 800 }}>
