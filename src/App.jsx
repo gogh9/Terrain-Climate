@@ -482,31 +482,28 @@ export default function App() {
         />
       );
     }
-    if (activeView === 'workspace') {
-      return (
-        <TeacherWorkspace
-          user={user}
-          locations={LOCATION_DATA}
-          initialSessionId={currentSession?.id}
-          onEnterMap={(session) => {
-            if (!session) return;
-            setCurrentSession(session);
-            if (session.categoryFilter) {
-              setUrlCategory(session.categoryFilter);
-              setCategoryFilter(session.categoryFilter);
-            }
-            setActiveView('map');
-            try {
-              const newUrl = getStudentShareUrl(session);
-              window.history.replaceState(null, '', newUrl);
-            } catch (e) {
-              console.warn(e);
-            }
-          }}
-          onLogout={handleLogout}
-        />
-      );
-    }
+    return (
+      <TeacherWorkspace
+        user={user}
+        locations={LOCATION_DATA}
+        initialSessionId={currentSession?.id}
+        onEnterMap={(session) => {
+          if (!session) return;
+          setCurrentSession(session);
+          if (session.categoryFilter) {
+            setUrlCategory(session.categoryFilter);
+            setCategoryFilter(session.categoryFilter);
+          }
+          try {
+            const newUrl = getStudentShareUrl(session);
+            window.location.href = newUrl;
+          } catch (e) {
+            console.warn(e);
+          }
+        }}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   // 2. Student Link Access (with ?session=...):
